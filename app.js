@@ -129,14 +129,14 @@ const state = {
   taxEntries: [],
   taxExpectedExpenses: DEFAULT_EXPECTED_EXPENSES,
   currentPage: 1,
-  pageSize: 25,
+  pageSize: 10,
   ledgerHandle: null,
   ledgerName: "",
   saveMode: "download",
   gbpToMurRate: null,
   gbpToMurDate: "",
   quickFilters: {
-    datePreset: "all",
+    datePreset: "this-year",
     salaryOnly: false,
     excludeTransfers: false,
     bankOnly: "all",
@@ -166,6 +166,9 @@ function cacheElements() {
   els.newLedgerBtn = document.getElementById("new-ledger-btn");
   els.saveLedgerBtn = document.getElementById("save-ledger-btn");
   els.dropZone = document.getElementById("drop-zone");
+  els.importPanel = document.getElementById("import-panel");
+  els.toggleImportPanel = document.getElementById("toggle-import-panel");
+  els.closeImportPanel = document.getElementById("close-import-panel");
   els.importStatus = document.getElementById("import-status");
   els.ledgerStatus = document.getElementById("ledger-status");
   els.importLog = document.getElementById("import-log");
@@ -174,7 +177,6 @@ function cacheElements() {
   els.trendMetricsGrid = document.getElementById("trend-metrics-grid");
   els.searchInput = document.getElementById("search-input");
   els.accountFilter = document.getElementById("account-filter");
-  els.currencyFilter = document.getElementById("currency-filter");
   els.quickFilterChips = document.getElementById("quick-filter-chips");
   els.fromDate = document.getElementById("from-date");
   els.toDate = document.getElementById("to-date");
@@ -214,6 +216,13 @@ function bindEvents() {
   });
   els.exportBtn.addEventListener("click", exportTransactionsCsv);
   els.resetBtn.addEventListener("click", resetLedgerData);
+  els.toggleImportPanel.addEventListener("click", openImportPanel);
+  els.closeImportPanel.addEventListener("click", closeImportPanel);
+  els.importPanel.addEventListener("click", (event) => {
+    if (event.target instanceof HTMLElement && event.target.hasAttribute("data-close-import-panel")) {
+      closeImportPanel();
+    }
+  });
 
   ["dragenter", "dragover"].forEach((type) => {
     els.dropZone.addEventListener(type, (event) => {
@@ -234,7 +243,7 @@ function bindEvents() {
     await importFiles(files);
   });
 
-  [els.searchInput, els.accountFilter, els.currencyFilter, els.fromDate, els.toDate].forEach((input) => {
+  [els.searchInput, els.accountFilter, els.fromDate, els.toDate].forEach((input) => {
     input.addEventListener("input", onFilterChange);
     input.addEventListener("change", onFilterChange);
   });
@@ -968,7 +977,6 @@ async function stableHash(input) {
 function applyFilters() {
   const query = els.searchInput.value.trim().toLowerCase();
   const account = els.accountFilter.value || "all";
-  const currency = els.currencyFilter.value || "all";
   const { fromDate, toDate } = getEffectiveDateRange();
   const { salaryOnly, excludeTransfers, bankOnly } = state.quickFilters;
 
@@ -976,7 +984,6 @@ function applyFilters() {
     const matchesQuery = !query || [txn.description, txn.reference, txn.sourceFile, txn.accountLabel]
       .some((value) => value.toLowerCase().includes(query));
     const matchesAccount = account === "all" || txn.accountLabel === account;
-    const matchesCurrency = currency === "all" || txn.currency === currency;
     const matchesFromDate = !fromDate || txn.txnDate >= fromDate;
     const matchesToDate = !toDate || txn.txnDate <= toDate;
     const matchesSalary = !salaryOnly || isSalaryTransaction(txn);
@@ -986,13 +993,22 @@ function applyFilters() {
       || (bankOnly === "mcb-only" && txn.bankName === "MCB");
     return matchesQuery
       && matchesAccount
-      && matchesCurrency
       && matchesFromDate
       && matchesToDate
       && matchesSalary
       && matchesTransfer
       && matchesBank;
   });
+}
+
+function openImportPanel() {
+  els.importPanel.hidden = false;
+  document.body.classList.add("overlay-open");
+}
+
+function closeImportPanel() {
+  els.importPanel.hidden = true;
+  document.body.classList.remove("overlay-open");
 }
 
 function renderAll() {
@@ -1036,11 +1052,8 @@ function renderLedgerStatus() {
 
 function renderFilterOptions() {
   const currentAccount = els.accountFilter.value || "all";
-  const currentCurrency = els.currencyFilter.value || "all";
   const accounts = Array.from(new Set(state.transactions.map((txn) => txn.accountLabel))).sort();
-  const currencies = Array.from(new Set(state.transactions.map((txn) => txn.currency))).sort();
   populateSelect(els.accountFilter, ["all", ...accounts], "All Accounts", currentAccount);
-  populateSelect(els.currencyFilter, ["all", ...currencies], "All Currencies", currentCurrency);
 }
 
 function populateSelect(select, values, allLabel, currentValue) {

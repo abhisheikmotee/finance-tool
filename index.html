@@ -11,48 +11,6 @@
 </head>
 <body>
   <div class="page-shell">
-    <details class="glass-card control-panel">
-      <summary class="control-summary">
-        <div>
-          <p class="section-kicker">Ledger File</p>
-          <h2>Persistent Import Controls</h2>
-        </div>
-        <div class="status-pill">Closed By Default</div>
-      </summary>
-      <div class="control-bar">
-        <div class="control-copy">
-          <div class="control-actions">
-            <div id="import-status" class="status-pill">Ready</div>
-            <div class="utility-actions">
-              <button id="new-ledger-btn" class="icon-btn" title="Create Ledger File" aria-label="Create Ledger File">New</button>
-              <button id="choose-ledger-btn" class="icon-btn" title="Open Ledger File" aria-label="Open Ledger File">Open</button>
-              <button id="save-ledger-btn" class="icon-btn" title="Save Ledger" aria-label="Save Ledger">Save</button>
-              <button id="export-btn" class="icon-btn" title="Export Transactions CSV" aria-label="Export Transactions CSV">CSV</button>
-              <button id="reset-btn" class="icon-btn danger" title="Clear Ledger Data" aria-label="Clear Ledger Data">Clear</button>
-            </div>
-          </div>
-          <div id="ledger-status" class="ledger-banner">Choose or create a ledger file to persist data on disk.</div>
-          <div class="mini-log-shell">
-            <div class="mini-log-head">
-              <p class="section-kicker">Import Activity</p>
-              <span class="mini-log-caption">Latest actions</span>
-            </div>
-            <div id="import-log" class="import-log compact"></div>
-            <div class="mini-log-caption">
-              Rates by <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">ExchangeRate-API</a>
-            </div>
-          </div>
-        </div>
-        <label id="drop-zone" class="drop-zone compact">
-          <input id="file-input" type="file" accept=".csv,.CSV,.tsv,.TSV" multiple hidden>
-          <input id="ledger-file-input" type="file" accept=".json" hidden>
-          <div class="drop-icon">+</div>
-          <p class="drop-title">Drop statement files</p>
-          <p class="drop-subtitle">Quick import area for CSV and TSV exports</p>
-        </label>
-      </div>
-    </details>
-
     <main class="content-grid">
       <section class="glass-card metrics-card">
         <div class="section-heading">
@@ -60,7 +18,10 @@
             <p class="section-kicker">Overview</p>
             <h2>At a Glance</h2>
           </div>
-          <div id="metrics-last-import" class="mini-log-caption"></div>
+          <div class="overview-actions">
+            <div id="metrics-last-import" class="mini-log-caption"></div>
+            <button id="toggle-import-panel" class="btn btn-secondary" type="button">Import Controls</button>
+          </div>
         </div>
         <div id="metrics-grid" class="metrics-grid"></div>
       </section>
@@ -89,10 +50,6 @@
           <label class="field">
             <span>Account</span>
             <select id="account-filter"></select>
-          </label>
-          <label class="field">
-            <span>Currency</span>
-            <select id="currency-filter"></select>
           </label>
           <label class="field">
             <span>From Date</span>
@@ -267,6 +224,51 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="import-panel" class="overlay-panel" hidden>
+    <div class="overlay-backdrop" data-close-import-panel></div>
+    <section class="glass-card overlay-card control-panel-shell" role="dialog" aria-modal="true" aria-labelledby="import-panel-title">
+      <div class="overlay-header">
+        <div>
+          <p class="section-kicker">Ledger File</p>
+          <h2 id="import-panel-title">Persistent Import Controls</h2>
+        </div>
+        <button id="close-import-panel" class="icon-btn" type="button" aria-label="Close import controls">Close</button>
+      </div>
+      <div class="control-bar">
+        <div class="control-copy">
+          <div class="control-actions">
+            <div id="import-status" class="status-pill">Ready</div>
+            <div class="utility-actions">
+              <button id="new-ledger-btn" class="icon-btn" title="Create Ledger File" aria-label="Create Ledger File">New</button>
+              <button id="choose-ledger-btn" class="icon-btn" title="Open Ledger File" aria-label="Open Ledger File">Open</button>
+              <button id="save-ledger-btn" class="icon-btn" title="Save Ledger" aria-label="Save Ledger">Save</button>
+              <button id="export-btn" class="icon-btn" title="Export Transactions CSV" aria-label="Export Transactions CSV">CSV</button>
+              <button id="reset-btn" class="icon-btn danger" title="Clear Ledger Data" aria-label="Clear Ledger Data">Clear</button>
+            </div>
+          </div>
+          <div id="ledger-status" class="ledger-banner">Choose or create a ledger file to persist data on disk.</div>
+          <div class="mini-log-shell">
+            <div class="mini-log-head">
+              <p class="section-kicker">Import Activity</p>
+              <span class="mini-log-caption">Latest actions</span>
+            </div>
+            <div id="import-log" class="import-log compact"></div>
+            <div class="mini-log-caption">
+              Rates by <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">ExchangeRate-API</a>
+            </div>
+          </div>
+        </div>
+        <label id="drop-zone" class="drop-zone compact">
+          <input id="file-input" type="file" accept=".csv,.CSV,.tsv,.TSV" multiple hidden>
+          <input id="ledger-file-input" type="file" accept=".json" hidden>
+          <div class="drop-icon">+</div>
+          <p class="drop-title">Drop statement files</p>
+          <p class="drop-subtitle">Quick import area for CSV and TSV exports</p>
+        </label>
+      </div>
+    </section>
   </div>
 
   <script src="./app.js"></script>

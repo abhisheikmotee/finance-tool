@@ -29,6 +29,10 @@ body {
     linear-gradient(180deg, var(--bg), #f8f5ef 48%, var(--bg-accent) 100%);
 }
 
+body.overlay-open {
+  overflow: hidden;
+}
+
 body::before {
   content: "";
   position: fixed;
@@ -112,32 +116,48 @@ h3 {
   display: grid;
   grid-template-columns: 1.8fr 0.9fr;
   gap: 18px;
-  padding: 8px 18px 18px;
-  margin-bottom: 22px;
+  padding: 0;
   align-items: stretch;
 }
 
-.control-panel {
-  margin-bottom: 22px;
-  overflow: hidden;
+.overview-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.control-summary {
+.overlay-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+}
+
+.overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 33, 25, 0.34);
+  backdrop-filter: blur(6px);
+}
+
+.overlay-card {
+  position: relative;
+  width: min(1240px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 22px;
+}
+
+.overlay-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 22px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.control-summary::-webkit-details-marker {
-  display: none;
-}
-
-.control-panel:not([open]) .control-bar {
-  display: none;
+  margin-bottom: 18px;
 }
 
 .control-copy {
@@ -856,11 +876,21 @@ tbody tr:hover {
     align-items: stretch;
   }
 
+  .overview-actions,
   .control-actions,
   .mini-log-head,
-  .control-summary {
+  .overlay-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .overlay-panel {
+    padding: 12px;
+  }
+
+  .overlay-card {
+    width: 100%;
+    max-height: calc(100vh - 24px);
   }
 
   .metrics-grid {
