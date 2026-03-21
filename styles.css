@@ -600,6 +600,30 @@ h3 {
   align-items: end;
 }
 
+.table-card th:nth-child(1),
+.table-card td:nth-child(1) {
+  width: 16%;
+}
+
+.table-card th:nth-child(2),
+.table-card td:nth-child(2) {
+  width: 19%;
+}
+
+.table-card th:nth-child(3),
+.table-card td:nth-child(3) {
+  width: 27%;
+}
+
+.table-card th:nth-child(4),
+.table-card td:nth-child(4),
+.table-card th:nth-child(5),
+.table-card td:nth-child(5),
+.table-card th:nth-child(6),
+.table-card td:nth-child(6) {
+  width: 12.66%;
+}
+
 .table-wrap {
   overflow: auto;
   border-radius: 22px;
@@ -698,6 +722,12 @@ thead th {
 
 .sort-btn.align-end {
   justify-content: flex-end;
+}
+
+.table-card td:nth-child(4),
+.table-card td:nth-child(5),
+.table-card td:nth-child(6) {
+  text-align: right;
 }
 
 .sort-btn::after {
