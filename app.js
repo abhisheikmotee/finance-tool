@@ -1484,18 +1484,13 @@ function renderMonthlySummary() {
 }
 
 function renderTrendInsights() {
-  const filtered = state.filteredTransactions;
-  const monthlyMap = new Map();
+  const filtered = getChronologicalTransactions(state.filteredTransactions);
+  const planningTransactions = getChronologicalTransactions(state.transactions);
+  const planningYear = getPlanningYear();
   const categoryMap = new Map();
   const forecastMap = new Map();
 
-  filtered.forEach((txn) => {
-    const month = txn.txnDate.slice(0, 7);
-    const monthEntry = monthlyMap.get(month) || { debit: 0, credit: 0 };
-    monthEntry.debit += toInsightAmount(txn.debit, txn.currency);
-    monthEntry.credit += toInsightAmount(txn.credit, txn.currency);
-    monthlyMap.set(month, monthEntry);
-
+  planningTransactions.forEach((txn) => {
     const forecastEntry = forecastMap.get(txn.accountLabel) || {
       accountLabel: txn.accountLabel,
       bankName: txn.bankName,
@@ -1511,13 +1506,16 @@ function renderTrendInsights() {
     forecastMap.set(txn.accountLabel, forecastEntry);
   });
 
-  const lastTxnDate = filtered.length ? filtered[filtered.length - 1].txnDate : "";
+  const lastTxnDate = planningTransactions.length ? planningTransactions[planningTransactions.length - 1].txnDate : "";
   const rollingStart = lastTxnDate ? shiftDate(lastTxnDate, -30) : "";
-  filtered.forEach((txn) => {
+  planningTransactions.forEach((txn) => {
     if (rollingStart && txn.txnDate >= rollingStart) {
       const forecastEntry = forecastMap.get(txn.accountLabel);
       forecastEntry.net30 += toInsightNet(txn);
     }
+  });
+
+  filtered.forEach((txn) => {
     if (toInsightAmount(txn.debit, txn.currency) > 0) {
       const category = categorizeTransaction(txn);
       const categoryEntry = categoryMap.get(category) || { category, count: 0, total: 0 };
@@ -1527,18 +1525,16 @@ function renderTrendInsights() {
     }
   });
 
-  const monthlyRows = Array.from(monthlyMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  const projectionYear = detectProjectionYear(filtered);
   const baseForecastRows = Array.from(forecastMap.values())
     .sort((a, b) => a.accountLabel.localeCompare(b.accountLabel))
     .map((row) => ({
       ...row,
       endOfYear: row.lastBalance,
     }));
-  const forecastPlan = buildForecastPlan(filtered, baseForecastRows, projectionYear);
+  const forecastPlan = buildForecastPlan(planningTransactions, baseForecastRows, planningYear);
   const forecastRows = baseForecastRows.map((row) => {
       const endOfYear = forecastPlan.accountEndBalances.get(row.accountLabel)
-        ?? projectAccountYearEnd(row, filtered, projectionYear);
+        ?? projectAccountYearEnd(row, planningTransactions, planningYear);
       return {
         ...row,
         endOfYear,
@@ -1548,7 +1544,7 @@ function renderTrendInsights() {
   const projectedClosing = forecastRows.length
     ? forecastRows.reduce((sum, row) => sum + row.endOfYear, 0)
     : totalCurrentBalance;
-  const yearlyProjection = buildYearlyProjection(filtered, totalCurrentBalance, projectedClosing, forecastPlan);
+  const yearlyProjection = buildYearlyProjection(planningTransactions, totalCurrentBalance, projectedClosing, forecastPlan, planningYear);
   const knownFutureOutflows = forecastPlan.projectedRecurringSpendTotal
     + forecastPlan.projectedCsgTotal
     + forecastPlan.projectedIncomeTaxTotal;
@@ -1557,7 +1553,7 @@ function renderTrendInsights() {
     {
       label: "Projected Year-End Balance",
       value: moneyFormat(projectedClosing),
-      subtext: `Expected total balance by Dec ${projectionYear}`,
+      subtext: `Expected total balance by Dec ${planningYear}`,
     },
     {
       label: "Forecast Change",
@@ -1611,7 +1607,7 @@ function renderTrendInsights() {
         </div>
       </div>
     </article>
-  `).join("") : `<div class="empty-state">No account outlook is available for the current filters.</div>`;
+  `).join("") : `<div class="empty-state">No account outlook is available yet for the imported ledger.</div>`;
 }
 
 function renderCategoryBars(rows) {
@@ -1632,8 +1628,7 @@ function renderCategoryBars(rows) {
   `).join("");
 }
 
-function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedClosingBalance = 0, forecastPlan = null) {
-  const targetYear = detectProjectionYear(transactions);
+function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedClosingBalance = 0, forecastPlan = null, targetYear = getPlanningYear()) {
   const yearTransactions = transactions.filter((txn) => txn.txnDate.startsWith(`${targetYear}-`));
   const latestDate = yearTransactions.length ? yearTransactions[yearTransactions.length - 1].txnDate : "";
   const lastMonthIndex = latestDate ? Number(latestDate.slice(5, 7)) : 0;
@@ -1710,7 +1705,7 @@ function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedC
     ? `Balance path from Jan to ${formatMonthShort(`${targetYear}-${String(monthsElapsed || 1).padStart(2, "0")}`)} ${targetYear}, including quiet months as zero`
     : `Waiting for ${targetYear} transactions to estimate balance growth`;
   const balanceSubtext = yearTransactions.length
-    ? `Projected total balance across visible accounts through Dec ${targetYear}`
+    ? `Projected total balance across all tracked accounts through Dec ${targetYear}`
     : "Import current-year statements to estimate a closing balance";
   const summaryText = forecastPlan
     ? `Trendline blends confirmed Tax Tracker income and tax outflows with trailing-average day-to-day spending to target ${moneyFormat(projectedClosingBalance)} by Dec ${targetYear}.`
@@ -2005,6 +2000,18 @@ function buildForecastPlan(transactions, forecastRows, targetYear) {
   };
 }
 
+function getChronologicalTransactions(transactions) {
+  return [...transactions].sort((a, b) => (
+    a.txnDate.localeCompare(b.txnDate)
+    || a.accountLabel.localeCompare(b.accountLabel)
+    || a.description.localeCompare(b.description)
+  ));
+}
+
+function getPlanningYear() {
+  return Number(getTodayDateString().slice(0, 4));
+}
+
 function estimateRecurringMonthlySpend(transactions) {
   if (!transactions.length) return 0;
   const latestDate = transactions[transactions.length - 1].txnDate;
@@ -2065,7 +2072,7 @@ function pickForecastAccount(forecastRows, predicate) {
 
 function estimateOperatingBuffers(transactions, forecastRows, spendShares, recurringMonthlySpend) {
   const buffers = new Map();
-  const currentYear = detectProjectionYear(transactions);
+  const currentYear = getPlanningYear();
   const spendAccounts = forecastRows.filter((row) => row.currency === "MUR" && (row.bankName === "MCB" || row.bankName === "SBM"));
 
   spendAccounts.forEach((row) => {
