@@ -137,6 +137,10 @@ h3 {
   padding: 24px;
 }
 
+.overlay-panel[hidden] {
+  display: none !important;
+}
+
 .overlay-backdrop {
   position: absolute;
   inset: 0;
