@@ -2695,6 +2695,9 @@ function categorizeTransaction(txn) {
   const description = txn?.description || "";
   const reference = txn?.reference || "";
   const text = `${description} ${reference}`.toUpperCase();
+  if (isSqliSalaryTransfer(txn)) {
+    return "Salary";
+  }
   const patterns = [
     ["DELIVOO", "Food Delivery"],
     ["KOON PO YUEN", "Dining / Restaurants"],
@@ -2769,17 +2772,24 @@ function categorizeTransaction(txn) {
 function isSalaryTransaction(txn) {
   const text = `${txn.description || ""} ${txn.reference || ""}`.toUpperCase();
   const hasSalaryKeyword = /(SALARY|PAYROLL|WAGE|REMUNERATION)/.test(text);
-  const isInvoiceFromSqli = text.includes("INWARD TRANSFER")
-    && text.includes("INVOICE")
-    && text.includes("SQLI UK LIMITED");
-  return txn.credit > 0 && (hasSalaryKeyword || isInvoiceFromSqli);
+  return txn.credit > 0 && (hasSalaryKeyword || isSqliSalaryTransfer(txn));
 }
 
 function isTransferTransaction(txn) {
+  if (isSqliSalaryTransfer(txn)) return false;
   const category = categorizeTransaction(txn);
   if (category.startsWith("Transfers")) return true;
   const text = `${txn.description || ""} ${txn.reference || ""}`.toUpperCase();
   return text.includes("TRANSFER");
+}
+
+function isSqliSalaryTransfer(txn) {
+  const text = `${txn?.description || ""} ${txn?.reference || ""}`.toUpperCase();
+  return txn?.credit > 0
+    && txn?.bankName === "MCB"
+    && txn?.currency === "GBP"
+    && text.includes("INWARD TRANSFER")
+    && text.includes("SQLI UK LIMIT");
 }
 
 function getEffectiveDateRange() {
