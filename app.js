@@ -142,10 +142,6 @@ const state = {
     excludeTransfers: false,
     bankOnly: "all",
   },
-  tableSort: {
-    key: "txnDate",
-    direction: "desc",
-  },
   showAllCategories: false,
 };
 
@@ -187,8 +183,6 @@ function cacheElements() {
   els.searchInput = document.getElementById("search-input");
   els.accountFilter = document.getElementById("account-filter");
   els.quickFilterChips = document.getElementById("quick-filter-chips");
-  els.clearFiltersBtn = document.getElementById("clear-filters-btn");
-  els.activeFilterSummary = document.getElementById("active-filter-summary");
   els.fromDate = document.getElementById("from-date");
   els.toDate = document.getElementById("to-date");
   els.pageSize = document.getElementById("page-size");
@@ -197,7 +191,6 @@ function cacheElements() {
   els.monthlySummaryBody = document.getElementById("monthly-summary-body");
   els.monthlyFlowChart = document.getElementById("monthly-flow-chart");
   els.categorySummaryBody = document.getElementById("category-summary-body");
-  els.categoryBarList = document.getElementById("category-bar-list");
   els.toggleCategorySummary = document.getElementById("toggle-category-summary");
   els.forecastSummaryBody = document.getElementById("forecast-summary-body");
   els.forecastSummaryCards = document.getElementById("forecast-summary-cards");
@@ -267,8 +260,6 @@ function bindEvents() {
   });
 
   els.quickFilterChips.addEventListener("click", handleQuickFilterChipClick);
-  els.clearFiltersBtn.addEventListener("click", clearFilters);
-  document.querySelector("thead")?.addEventListener("click", handleTableSortClick);
 
   els.pageSize.addEventListener("change", () => {
     state.pageSize = Number(els.pageSize.value);
@@ -320,22 +311,6 @@ function onFilterChange() {
   renderAll();
 }
 
-function clearFilters() {
-  state.quickFilters = {
-    datePreset: "this-year",
-    salaryOnly: false,
-    excludeTransfers: false,
-    bankOnly: "all",
-  };
-  els.searchInput.value = "";
-  els.accountFilter.value = "all";
-  els.fromDate.value = "";
-  els.toDate.value = "";
-  state.currentPage = 1;
-  applyFilters();
-  renderAll();
-}
-
 function handleQuickFilterChipClick(event) {
   const button = event.target.closest("[data-chip]");
   if (!button) return;
@@ -349,25 +324,6 @@ function handleQuickFilterChipClick(event) {
     state.quickFilters.excludeTransfers = !state.quickFilters.excludeTransfers;
   } else if (chip === "sbm-only" || chip === "mcb-only") {
     state.quickFilters.bankOnly = state.quickFilters.bankOnly === chip ? "all" : chip;
-  }
-
-  state.currentPage = 1;
-  applyFilters();
-  renderAll();
-}
-
-function handleTableSortClick(event) {
-  const trigger = event.target.closest("[data-sort-key]");
-  if (!trigger) return;
-
-  const nextKey = trigger.getAttribute("data-sort-key");
-  if (!nextKey) return;
-
-  if (state.tableSort.key === nextKey) {
-    state.tableSort.direction = state.tableSort.direction === "asc" ? "desc" : "asc";
-  } else {
-    state.tableSort.key = nextKey;
-    state.tableSort.direction = nextKey === "txnDate" ? "desc" : "asc";
   }
 
   state.currentPage = 1;
@@ -1061,7 +1017,7 @@ function applyFilters() {
       && matchesTransfer
       && matchesBank;
   });
-  state.sortedTransactions = sortTransactions(state.filteredTransactions);
+  state.sortedTransactions = [...state.filteredTransactions];
 }
 
 function openImportPanel() {
@@ -1078,7 +1034,6 @@ function renderAll() {
   renderLedgerStatus();
   renderFilterOptions();
   renderQuickFilterChips();
-  renderActiveFilterSummary();
   renderMetrics();
   renderTransactionsTable();
   renderMonthlySummary();
@@ -1142,78 +1097,6 @@ function populateSelect(select, values, allLabel, currentValue) {
   if (values.includes(currentValue)) {
     select.value = currentValue;
   }
-}
-
-function renderActiveFilterSummary() {
-  const pills = [];
-  const query = els.searchInput.value.trim();
-  const account = els.accountFilter.value || "all";
-  const { fromDate, toDate } = getEffectiveDateRange();
-
-  if (query) {
-    pills.push({ label: "Search", value: query });
-  }
-  if (account !== "all") {
-    pills.push({ label: "Account", value: account });
-  }
-  if (fromDate || toDate) {
-    pills.push({
-      label: "Window",
-      value: `${fromDate ? formatDate(fromDate) : "Start"} - ${toDate ? formatDate(toDate) : "Now"}`,
-    });
-  }
-  if (state.quickFilters.salaryOnly) {
-    pills.push({ label: "Quick", value: "Salary only" });
-  }
-  if (state.quickFilters.excludeTransfers) {
-    pills.push({ label: "Quick", value: "Transfers excluded" });
-  }
-  if (state.quickFilters.bankOnly === "sbm-only") {
-    pills.push({ label: "Bank", value: "SBM only" });
-  }
-  if (state.quickFilters.bankOnly === "mcb-only") {
-    pills.push({ label: "Bank", value: "MCB only" });
-  }
-  if (!els.fromDate.value && !els.toDate.value && state.quickFilters.datePreset !== "all") {
-    pills.push({ label: "Preset", value: prettifyChipLabel(state.quickFilters.datePreset) });
-  }
-
-  els.activeFilterSummary.hidden = pills.length === 0;
-  els.activeFilterSummary.innerHTML = pills.map((pill) => `
-    <div class="active-filter-pill"><strong>${escapeHtml(pill.label)}:</strong> ${escapeHtml(pill.value)}</div>
-  `).join("");
-}
-
-function prettifyChipLabel(value) {
-  return value
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function sortTransactions(rows) {
-  const direction = state.tableSort.direction === "asc" ? 1 : -1;
-  const sorters = {
-    txnDate: (txn) => txn.txnDate,
-    accountLabel: (txn) => txn.accountLabel,
-    description: (txn) => txn.description,
-    debit: (txn) => txn.debit,
-    credit: (txn) => txn.credit,
-    balance: (txn) => txn.balance,
-  };
-  const picker = sorters[state.tableSort.key] || sorters.txnDate;
-
-  return [...rows].sort((a, b) => {
-    const aValue = picker(a);
-    const bValue = picker(b);
-    if (typeof aValue === "number" && typeof bValue === "number") {
-      return direction * (aValue - bValue || a.txnDate.localeCompare(b.txnDate));
-    }
-    return direction * (
-      String(aValue).localeCompare(String(bValue))
-      || a.txnDate.localeCompare(b.txnDate)
-      || a.accountLabel.localeCompare(b.accountLabel)
-    );
-  });
 }
 
 function renderMetrics() {
@@ -1323,7 +1206,6 @@ function renderTransactionsTable(options = {}) {
   els.nextPage.disabled = state.currentPage === totalPages;
   els.pageJumpInput.max = String(totalPages);
   els.pageJumpInput.value = String(state.currentPage);
-  renderTableSortState();
 
   if (!pageRows.length) {
     els.transactionsBody.innerHTML = `<tr><td colspan="6" class="empty-state">No transactions match the current filters.</td></tr>`;
@@ -1363,16 +1245,6 @@ function renderTransactionsTable(options = {}) {
   }).join("");
 
   restorePaginationPosition(previousPaginationTop);
-}
-
-function renderTableSortState() {
-  document.querySelectorAll("[data-sort-key]").forEach((button) => {
-    button.classList.remove("sort-asc", "sort-desc");
-    const key = button.getAttribute("data-sort-key");
-    if (key === state.tableSort.key) {
-      button.classList.add(state.tableSort.direction === "asc" ? "sort-asc" : "sort-desc");
-    }
-  });
 }
 
 function jumpToPage() {
@@ -1699,7 +1571,6 @@ function renderTrendInsights() {
 
   const allCategoryRows = Array.from(categoryMap.values()).sort((a, b) => b.total - a.total);
   const visibleCategoryRows = state.showAllCategories ? allCategoryRows : allCategoryRows.slice(0, 8);
-  renderCategoryBars(visibleCategoryRows);
   els.categorySummaryBody.innerHTML = visibleCategoryRows.length ? visibleCategoryRows.map((row) => `
     <tr>
       <td>${escapeHtml(row.category)}</td>
@@ -1733,24 +1604,6 @@ function renderTrendInsights() {
       </div>
     </article>
   `).join("") : `<div class="empty-state">No account outlook is available for the current filters.</div>`;
-}
-
-function renderCategoryBars(rows) {
-  if (!rows.length) {
-    els.categoryBarList.innerHTML = `<div class="empty-state">No visible spend categories to compare.</div>`;
-    return;
-  }
-
-  const maxTotal = Math.max(...rows.map((row) => row.total), 1);
-  els.categoryBarList.innerHTML = rows.map((row) => `
-    <div class="category-bar-item">
-      <div class="category-bar-label">${escapeHtml(row.category)}</div>
-      <div class="category-bar-track">
-        <div class="category-bar-fill" style="--fill:${((row.total / maxTotal) * 100).toFixed(2)}%"></div>
-      </div>
-      <div class="category-bar-value">${escapeHtml(compactMoneyFormat(row.total))}</div>
-    </div>
-  `).join("");
 }
 
 function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedClosingBalance = 0, forecastPlan = null) {
