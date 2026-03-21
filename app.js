@@ -185,6 +185,7 @@ function cacheElements() {
   els.prevPage = document.getElementById("prev-page");
   els.nextPage = document.getElementById("next-page");
   els.pageIndicator = document.getElementById("page-indicator");
+  els.paginationBar = document.getElementById("pagination-bar");
 }
 
 function bindEvents() {
@@ -234,13 +235,13 @@ function bindEvents() {
   els.pageSize.addEventListener("change", () => {
     state.pageSize = Number(els.pageSize.value);
     state.currentPage = 1;
-    renderTransactionsTable();
+    renderTransactionsTable({ preservePaginationPosition: true });
   });
 
   els.prevPage.addEventListener("click", () => {
     if (state.currentPage > 1) {
       state.currentPage -= 1;
-      renderTransactionsTable();
+      renderTransactionsTable({ preservePaginationPosition: true });
     }
   });
 
@@ -248,7 +249,7 @@ function bindEvents() {
     const totalPages = Math.max(1, Math.ceil(state.filteredTransactions.length / state.pageSize));
     if (state.currentPage < totalPages) {
       state.currentPage += 1;
-      renderTransactionsTable();
+      renderTransactionsTable({ preservePaginationPosition: true });
     }
   });
 
@@ -1129,7 +1130,11 @@ function summarizeAccountBalances(transactions) {
   };
 }
 
-function renderTransactionsTable() {
+function renderTransactionsTable(options = {}) {
+  const { preservePaginationPosition = false } = options;
+  const previousPaginationTop = preservePaginationPosition && els.paginationBar
+    ? els.paginationBar.getBoundingClientRect().top
+    : null;
   const totalRows = state.filteredTransactions.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / state.pageSize));
   if (state.currentPage > totalPages) state.currentPage = totalPages;
@@ -1145,6 +1150,7 @@ function renderTransactionsTable() {
 
   if (!pageRows.length) {
     els.transactionsBody.innerHTML = `<tr><td colspan="8" class="empty-state">No transactions match the current filters.</td></tr>`;
+    restorePaginationPosition(previousPaginationTop);
     return;
   }
 
@@ -1158,6 +1164,21 @@ function renderTransactionsTable() {
       <td>${moneyFormat(txn.balance)}</td>
     </tr>
   `).join("");
+
+  restorePaginationPosition(previousPaginationTop);
+}
+
+function restorePaginationPosition(previousPaginationTop) {
+  if (previousPaginationTop === null || !els.paginationBar) return;
+
+  requestAnimationFrame(() => {
+    const currentPaginationTop = els.paginationBar.getBoundingClientRect().top;
+    window.scrollBy({
+      top: currentPaginationTop - previousPaginationTop,
+      left: 0,
+      behavior: "auto",
+    });
+  });
 }
 
 function renderMonthlySummary() {
