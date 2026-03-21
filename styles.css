@@ -472,6 +472,13 @@ h3 {
   line-height: 1.4;
 }
 
+.metric-detail {
+  margin-top: 6px;
+  color: rgba(77, 95, 84, 0.78);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .metric-tile-inline .metric-tile-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 132px;

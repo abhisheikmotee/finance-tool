@@ -1545,8 +1545,7 @@ function renderTrendInsights() {
     ? forecastRows.reduce((sum, row) => sum + row.endOfYear, 0)
     : totalCurrentBalance;
   const yearlyProjection = buildYearlyProjection(planningTransactions, totalCurrentBalance, projectedClosing, forecastPlan, planningYear);
-  const knownFutureOutflows = forecastPlan.projectedRecurringSpendTotal
-    + forecastPlan.projectedCsgTotal
+  const knownFutureOutflows = forecastPlan.projectedCsgTotal
     + forecastPlan.projectedIncomeTaxTotal;
 
   const trendTiles = [
@@ -1570,7 +1569,8 @@ function renderTrendInsights() {
     {
       label: "Known Future Outflows",
       value: moneyFormat(knownFutureOutflows),
-      subtext: "Recurring spend plus planned tax payments still ahead",
+      subtext: "Planned income tax and Tax Tracker CSG still ahead",
+      detail: `+ ${moneyFormat(forecastPlan.projectedRecurringSpendTotal)} estimated non-tax spend`,
       toneClass: "is-negative",
     },
   ];
@@ -1580,6 +1580,7 @@ function renderTrendInsights() {
       <div class="metric-label">${escapeHtml(metric.label)}</div>
       <div class="metric-value">${escapeHtml(metric.value)}</div>
       <div class="metric-subtext">${escapeHtml(metric.subtext)}</div>
+      ${metric.detail ? `<div class="metric-detail">${escapeHtml(metric.detail)}</div>` : ""}
     </article>
   `).join("");
 
