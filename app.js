@@ -1286,6 +1286,8 @@ function renderMonthlySummary() {
     }
   });
 
+  const monthlyRows = Array.from(summaryMap.values())
+    .sort((a, b) => a.month.localeCompare(b.month) || a.accountLabel.localeCompare(b.accountLabel));
   const currentBalance = Array.from(latestBalanceByAccount.values())
     .reduce((sum, txn) => sum + toInsightAmount(txn.balance, txn.currency), 0);
   const summaryTiles = [
@@ -1328,15 +1330,12 @@ function renderMonthlySummary() {
     </article>
   `).join("");
 
-  const rows = Array.from(summaryMap.values())
-    .sort((a, b) => a.month.localeCompare(b.month) || a.accountLabel.localeCompare(b.accountLabel));
-
-  if (!rows.length) {
+  if (!monthlyRows.length) {
     els.monthlySummaryBody.innerHTML = `<tr><td colspan="5" class="empty-state">No monthly insights for the current filters.</td></tr>`;
     return;
   }
 
-  els.monthlySummaryBody.innerHTML = rows.map((row) => `
+  els.monthlySummaryBody.innerHTML = monthlyRows.map((row) => `
     <tr>
       <td>${escapeHtml(row.month)}</td>
       <td>${escapeHtml(row.accountLabel)}</td>
