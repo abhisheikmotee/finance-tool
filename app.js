@@ -146,7 +146,6 @@ const state = {
     key: "txnDate",
     direction: "desc",
   },
-  showAllCategories: false,
 };
 
 const els = {};
@@ -191,9 +190,7 @@ function cacheElements() {
   els.transactionsBody = document.getElementById("transactions-body");
   els.monthlySummaryMetrics = document.getElementById("monthly-summary-metrics");
   els.monthlySummaryBody = document.getElementById("monthly-summary-body");
-  els.categorySummaryBody = document.getElementById("category-summary-body");
   els.categoryBarList = document.getElementById("category-bar-list");
-  els.toggleCategorySummary = document.getElementById("toggle-category-summary");
   els.forecastSummaryBody = document.getElementById("forecast-summary-body");
   els.forecastSummaryCards = document.getElementById("forecast-summary-cards");
   els.trendlineChart = document.getElementById("trendline-chart");
@@ -301,10 +298,6 @@ function bindEvents() {
   els.taxBody.addEventListener("input", handleTaxTableInput);
   els.taxBody.addEventListener("click", handleTaxTableClick);
   els.taxSummaryBody.addEventListener("change", handleTaxSummaryInput);
-  els.toggleCategorySummary.addEventListener("click", () => {
-    state.showAllCategories = !state.showAllCategories;
-    renderTrendInsights();
-  });
 }
 
 function onFilterChange() {
@@ -1598,21 +1591,7 @@ function renderTrendInsights() {
   renderTrendlineChart(yearlyProjection);
 
   const allCategoryRows = Array.from(categoryMap.values()).sort((a, b) => b.total - a.total);
-  const visibleCategoryRows = state.showAllCategories ? allCategoryRows : allCategoryRows.slice(0, 8);
-  renderCategoryBars(visibleCategoryRows);
-  els.categorySummaryBody.innerHTML = visibleCategoryRows.length ? visibleCategoryRows.map((row) => `
-    <tr>
-      <td>${escapeHtml(row.category)}</td>
-      <td class="numeric-cell">${numberFormat(row.count)}</td>
-      <td class="numeric-cell amount-negative">${moneyFormat(row.total)}</td>
-      <td class="numeric-cell">${moneyFormat(row.total / Math.max(1, row.count))}</td>
-    </tr>
-  `).join("") : `<tr><td colspan="4" class="empty-state">No spending categories for the current filters.</td></tr>`;
-  const hasExtraCategories = allCategoryRows.length > 8;
-  els.toggleCategorySummary.hidden = !hasExtraCategories;
-  els.toggleCategorySummary.textContent = state.showAllCategories
-    ? `Show top 8`
-    : `Show all (${numberFormat(allCategoryRows.length)})`;
+  renderCategoryBars(allCategoryRows);
 
   els.forecastSummaryCards.innerHTML = forecastRows.length ? forecastRows.map((row) => `
     <article class="forecast-card">
