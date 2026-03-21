@@ -1372,3 +1372,29 @@ tbody tr:hover {
     min-width: 250px;
   }
 }
+
+@media (max-width: 932px) and (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
+  .tax-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tax-table {
+    min-width: 1180px;
+    table-layout: auto;
+  }
+
+  .tax-table th,
+  .tax-table td {
+    white-space: nowrap;
+  }
+
+  .tax-table .tax-input,
+  .tax-table .tax-readonly {
+    min-width: 130px;
+  }
+
+  .tax-table td[data-label="CSG Payment Reference"] .tax-input {
+    min-width: 250px;
+  }
+}
