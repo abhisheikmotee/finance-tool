@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finance Ledger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <details class="glass-card control-panel">
+      <summary class="control-summary">
+        <div>
+          <p class="section-kicker">Ledger File</p>
+          <h2>Persistent Import Controls</h2>
+        </div>
+        <div class="status-pill">Closed By Default</div>
+      </summary>
+      <div class="control-bar">
+        <div class="control-copy">
+          <div class="section-heading compact">
+            <div>
+              <p class="section-kicker">Ledger File</p>
+              <h2>Persistent Import Controls</h2>
+            </div>
+            <div class="top-statuses">
+              <div id="import-status" class="status-pill">Ready</div>
+              <div class="utility-actions">
+                <button id="new-ledger-btn" class="icon-btn" title="Create Ledger File" aria-label="Create Ledger File">New</button>
+                <button id="choose-ledger-btn" class="icon-btn" title="Open Ledger File" aria-label="Open Ledger File">Open</button>
+                <button id="save-ledger-btn" class="icon-btn" title="Save Ledger" aria-label="Save Ledger">Save</button>
+                <button id="export-btn" class="icon-btn" title="Export Transactions CSV" aria-label="Export Transactions CSV">CSV</button>
+                <button id="reset-btn" class="icon-btn danger" title="Clear Ledger Data" aria-label="Clear Ledger Data">Clear</button>
+              </div>
+            </div>
+          </div>
+          <div id="ledger-status" class="ledger-banner">Choose or create a ledger file to persist data on disk.</div>
+          <div class="mini-log-shell">
+            <div class="mini-log-head">
+              <p class="section-kicker">Import Activity</p>
+              <span class="mini-log-caption">Latest actions</span>
+            </div>
+            <div id="import-log" class="import-log compact"></div>
+            <div class="mini-log-caption">
+              Rates by <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">ExchangeRate-API</a>
+            </div>
+          </div>
+        </div>
+        <label id="drop-zone" class="drop-zone compact">
+          <input id="file-input" type="file" accept=".csv,.CSV,.tsv,.TSV" multiple hidden>
+          <input id="ledger-file-input" type="file" accept=".json" hidden>
+          <div class="drop-icon">+</div>
+          <p class="drop-title">Drop statement files</p>
+          <p class="drop-subtitle">Quick import area for CSV and TSV exports</p>
+        </label>
+      </div>
+    </details>
+
+    <main class="content-grid">
+      <section class="glass-card metrics-card">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Overview</p>
+            <h2>At a Glance</h2>
+          </div>
+          <div id="metrics-last-import" class="mini-log-caption"></div>
+        </div>
+        <div id="metrics-grid" class="metrics-grid"></div>
+      </section>
+
+      <section class="glass-card filters-card">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Filter</p>
+            <h2>Transactions</h2>
+          </div>
+        </div>
+        <div id="quick-filter-chips" class="quick-filter-chips" aria-label="Quick filters">
+          <button class="filter-chip" type="button" data-chip="this-month">This month</button>
+          <button class="filter-chip" type="button" data-chip="last-3-months">Last 3 months</button>
+          <button class="filter-chip" type="button" data-chip="this-year">This year</button>
+          <button class="filter-chip" type="button" data-chip="salary-only">Salary only</button>
+          <button class="filter-chip" type="button" data-chip="transfers-excluded">Transfers excluded</button>
+          <button class="filter-chip" type="button" data-chip="sbm-only">SBM only</button>
+          <button class="filter-chip" type="button" data-chip="mcb-only">MCB only</button>
+        </div>
+        <div class="filters-grid">
+          <label class="field">
+            <span>Search</span>
+            <input id="search-input" type="search" placeholder="Description, reference, source file">
+          </label>
+          <label class="field">
+            <span>Account</span>
+            <select id="account-filter"></select>
+          </label>
+          <label class="field">
+            <span>Currency</span>
+            <select id="currency-filter"></select>
+          </label>
+          <label class="field">
+            <span>From Date</span>
+            <input id="from-date" type="date">
+          </label>
+          <label class="field">
+            <span>To Date</span>
+            <input id="to-date" type="date">
+          </label>
+          <label class="field">
+            <span>Rows Per Page</span>
+            <select id="page-size">
+              <option value="10">10</option>
+              <option value="25" selected>25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="glass-card table-card">
+        <div class="section-heading table-heading">
+          <div>
+            <p class="section-kicker">Ledger</p>
+            <h2>Transactions Table</h2>
+          </div>
+          <div id="table-count" class="table-count">0 rows</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Txn Date</th>
+                <th>Account</th>
+                <th>Description</th>
+                <th>Debit</th>
+                <th>Credit</th>
+                <th>Balance</th>
+              </tr>
+            </thead>
+            <tbody id="transactions-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination-bar">
+          <button id="prev-page" class="btn btn-secondary">Previous</button>
+          <div id="page-indicator" class="page-indicator">Page 1 of 1</div>
+          <button id="next-page" class="btn btn-secondary">Next</button>
+        </div>
+      </section>
+
+      <section class="glass-card insights-card">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Insights</p>
+            <h2>Monthly Cash Flow</h2>
+          </div>
+        </div>
+        <div id="monthly-summary-metrics" class="metrics-grid trend-grid"></div>
+        <div class="table-wrap compact">
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Account</th>
+                <th>Total Debit</th>
+                <th>Total Credit</th>
+                <th>Net Cash Flow</th>
+              </tr>
+            </thead>
+            <tbody id="monthly-summary-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="glass-card trends-card">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Planning</p>
+            <h2>Trends And Forecast</h2>
+          </div>
+        </div>
+        <div id="trend-metrics-grid" class="metrics-grid trend-grid"></div>
+        <section class="trendline-panel">
+          <div class="trendline-copy">
+            <div>
+              <p class="section-kicker">Trendline</p>
+              <h3>Expected Balance Growth</h3>
+            </div>
+            <p id="trendline-summary" class="trendline-summary">Import transactions to see expected balance growth through year end.</p>
+          </div>
+          <div class="trendline-chart-wrap">
+            <svg id="trendline-chart" class="trendline-chart" viewBox="0 0 760 280" role="img" aria-label="Expected balance growth forecast chart"></svg>
+          </div>
+        </section>
+        <div class="dual-tables">
+          <div class="table-wrap compact">
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Transactions</th>
+                  <th>Total Spend</th>
+                  <th>Avg Spend</th>
+                </tr>
+              </thead>
+              <tbody id="category-summary-body"></tbody>
+            </table>
+          </div>
+          <div class="table-wrap compact">
+            <table>
+              <thead>
+                <tr>
+                  <th>Account</th>
+                  <th>Last Balance</th>
+                  <th>30d Net Flow</th>
+                  <th>End Of Year</th>
+                </tr>
+              </thead>
+              <tbody id="forecast-summary-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="glass-card tax-card">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Tax</p>
+            <h2>Tracker</h2>
+          </div>
+          <button id="add-tax-row-btn" class="btn btn-secondary" type="button">Add Row</button>
+        </div>
+        <div class="table-wrap">
+          <table class="tax-table">
+            <thead>
+              <tr>
+                <th>Invoiced Date</th>
+                <th>Date Received</th>
+                <th>Date CSG Paid</th>
+                <th>Exchange Rate Buying Notes at Date Received</th>
+                <th>Amount Received (GBP)</th>
+                <th>Amount Received (MUR)</th>
+                <th>CSG Amount Paid (MUR)</th>
+                <th>CSG Payment Reference</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="tax-body"></tbody>
+          </table>
+        </div>
+        <div class="section-heading compact tax-forecast-heading">
+          <div>
+            <h3>Forecast</h3>
+          </div>
+        </div>
+        <div class="table-wrap tax-summary-wrap">
+          <table class="tax-summary-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>SubTotal</th>
+                <th>Type</th>
+                <th>SubTotal</th>
+              </tr>
+            </thead>
+            <tbody id="tax-summary-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
