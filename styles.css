@@ -107,7 +107,7 @@ h3 {
 .section-note {
   margin: 10px 0 0;
   color: rgba(77, 95, 84, 0.78);
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   line-height: 1.45;
 }
 
@@ -475,7 +475,8 @@ h3 {
 .metric-subtext {
   margin-top: 8px;
   color: var(--muted-soft);
-  font-size: 0.92rem;
+  max-width: 26ch;
+  font-size: 0.88rem;
   line-height: 1.4;
 }
 
@@ -631,7 +632,7 @@ h3 {
 .account-badge {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -640,37 +641,38 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 24px;
-  padding: 2px 8px;
+  min-height: 20px;
+  padding: 1px 7px;
   border-radius: 999px;
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .account-bank-mcb {
-  background: rgba(15, 118, 110, 0.1);
+  background: rgba(15, 118, 110, 0.07);
   color: var(--primary-strong);
 }
 
 .account-bank-sbm {
-  background: rgba(214, 168, 79, 0.14);
+  background: rgba(214, 168, 79, 0.1);
   color: #8c6220;
 }
 
 .account-number {
-  color: #30423a;
+  color: #4d5f54;
+  font-size: 0.84rem;
   font-weight: 600;
 }
 
 .currency-mur {
-  background: rgba(16, 33, 25, 0.08);
+  background: rgba(16, 33, 25, 0.06);
   color: #30423a;
 }
 
 .currency-gbp {
-  background: rgba(17, 94, 89, 0.12);
+  background: rgba(17, 94, 89, 0.08);
   color: var(--primary-strong);
 }
 
@@ -1167,7 +1169,7 @@ tbody tr:hover {
 }
 
 .table-panel-head {
-  margin-bottom: 14px;
+  margin-bottom: 18px;
   padding: 2px 2px 10px;
   border-bottom: 1px solid rgba(20, 38, 29, 0.08);
 }
@@ -1200,6 +1202,19 @@ tbody tr:hover {
   grid-template-columns: clamp(220px, 24vw, 320px) minmax(0, 1fr) 92px;
   align-items: center;
   gap: 12px;
+  transition: transform 160ms ease;
+}
+
+.category-bar-item:hover {
+  transform: translateX(2px);
+}
+
+.category-bar-item:hover .category-bar-track {
+  background: rgba(20, 38, 29, 0.12);
+}
+
+.category-bar-item:hover .category-bar-fill {
+  filter: saturate(1.08) brightness(0.98);
 }
 
 .category-bar-label {
@@ -1423,7 +1438,7 @@ tbody tr:hover {
 }
 
 .trend-label {
-  fill: var(--muted);
+  fill: #5a6b62;
   font-size: 12px;
   font-family: "Source Sans 3", sans-serif;
 }
@@ -1436,15 +1451,15 @@ tbody tr:hover {
 }
 
 .trend-today-marker {
-  stroke: rgba(15, 118, 110, 0.28);
-  stroke-width: 1.5;
+  stroke: rgba(15, 118, 110, 0.18);
+  stroke-width: 1.2;
   stroke-dasharray: 4 6;
 }
 
 .trend-today-label {
-  fill: var(--primary-strong);
-  font-size: 11px;
-  font-weight: 700;
+  fill: rgba(17, 94, 89, 0.72);
+  font-size: 10px;
+  font-weight: 600;
   font-family: "Source Sans 3", sans-serif;
 }
 
@@ -1459,6 +1474,8 @@ tbody tr:hover {
 
 .empty-state {
   padding: 20px 16px;
+  max-width: 560px;
+  margin: 0 auto;
   text-align: center;
   color: var(--muted-soft);
   font-size: 0.92rem;
