@@ -1295,12 +1295,12 @@ function renderTransactionsTable(options = {}) {
 
   els.transactionsBody.innerHTML = pageRows.map((txn) => `
     <tr>
-      <td class="txn-date-cell">${escapeHtml(txn.txnDate)}</td>
-      <td class="txn-account-cell">${escapeHtml(txn.accountLabel)}</td>
-      <td class="txn-description-cell">${escapeHtml(txn.description)}</td>
-      <td class="txn-amount-cell ${txn.debit > 0 ? "amount-negative" : ""}">${moneyFormat(txn.debit)}</td>
-      <td class="txn-amount-cell ${txn.credit > 0 ? "amount-positive" : ""}">${moneyFormat(txn.credit)}</td>
-      <td class="txn-balance-cell">${moneyFormat(txn.balance)}</td>
+      <td>${escapeHtml(txn.txnDate)}</td>
+      <td>${escapeHtml(txn.accountLabel)}</td>
+      <td>${escapeHtml(txn.description)}</td>
+      <td class="${txn.debit > 0 ? "amount-negative" : ""}">${moneyFormat(txn.debit)}</td>
+      <td class="${txn.credit > 0 ? "amount-positive" : ""}">${moneyFormat(txn.credit)}</td>
+      <td>${moneyFormat(txn.balance)}</td>
     </tr>
   `).join("");
 
