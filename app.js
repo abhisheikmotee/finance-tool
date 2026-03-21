@@ -2695,19 +2695,25 @@ function estimateMonthlyExpenseRunRate(transactions, today = getTodayDateString(
   const historyMonthKeys = [];
   const cursor = new Date(`${currentMonthStart}T00:00:00`);
   cursor.setMonth(cursor.getMonth() - 1);
-  for (let index = 0; index < 12; index += 1) {
+  for (let index = 0; index < 36; index += 1) {
     historyMonthKeys.unshift(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
     cursor.setMonth(cursor.getMonth() - 1);
   }
 
-  const historyValues = historyMonthKeys
-    .map((monthKey) => monthlyTotals.get(monthKey) || 0)
-    .filter((value) => value > 0);
-  if (!historyValues.length) {
+  const historySeries = historyMonthKeys.map((monthKey) => monthlyTotals.get(monthKey) || 0);
+  const observedValues = historySeries.filter((value) => value > 0);
+  if (!observedValues.length) {
     return DEFAULT_EXPECTED_EXPENSES / 12;
   }
+  if (observedValues.length < 6) {
+    return average(observedValues);
+  }
 
-  return average(historyValues);
+  const longTermBaseline = winsorizedAverage(historySeries, 0.1, 0.9);
+  const recentMedian = median(historySeries.slice(-12));
+  const trendProjection = projectSpendRunRate(historySeries);
+
+  return Math.max(0, 0.5 * longTermBaseline + 0.3 * recentMedian + 0.2 * trendProjection);
 }
 
 function calculateIncomeTax(amount) {
