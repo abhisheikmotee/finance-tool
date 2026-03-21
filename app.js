@@ -134,6 +134,7 @@ const state = {
     excludeTransfers: false,
     bankOnly: "all",
   },
+  showAllCategories: false,
 };
 
 const els = {};
@@ -175,6 +176,7 @@ function cacheElements() {
   els.monthlySummaryMetrics = document.getElementById("monthly-summary-metrics");
   els.monthlySummaryBody = document.getElementById("monthly-summary-body");
   els.categorySummaryBody = document.getElementById("category-summary-body");
+  els.toggleCategorySummary = document.getElementById("toggle-category-summary");
   els.forecastSummaryBody = document.getElementById("forecast-summary-body");
   els.trendlineChart = document.getElementById("trendline-chart");
   els.trendlineSummary = document.getElementById("trendline-summary");
@@ -263,6 +265,10 @@ function bindEvents() {
   els.taxBody.addEventListener("input", handleTaxTableInput);
   els.taxBody.addEventListener("click", handleTaxTableClick);
   els.taxSummaryBody.addEventListener("change", handleTaxSummaryInput);
+  els.toggleCategorySummary.addEventListener("click", () => {
+    state.showAllCategories = !state.showAllCategories;
+    renderTrendInsights();
+  });
 }
 
 function onFilterChange() {
@@ -1368,8 +1374,9 @@ function renderTrendInsights() {
   els.trendlineSummary.textContent = yearlyProjection.summaryText;
   renderTrendlineChart(yearlyProjection);
 
-  const categoryRows = Array.from(categoryMap.values()).sort((a, b) => b.total - a.total).slice(0, 8);
-  els.categorySummaryBody.innerHTML = categoryRows.length ? categoryRows.map((row) => `
+  const allCategoryRows = Array.from(categoryMap.values()).sort((a, b) => b.total - a.total);
+  const visibleCategoryRows = state.showAllCategories ? allCategoryRows : allCategoryRows.slice(0, 8);
+  els.categorySummaryBody.innerHTML = visibleCategoryRows.length ? visibleCategoryRows.map((row) => `
     <tr>
       <td>${escapeHtml(row.category)}</td>
       <td>${numberFormat(row.count)}</td>
@@ -1377,6 +1384,11 @@ function renderTrendInsights() {
       <td>${moneyFormat(row.total / Math.max(1, row.count))}</td>
     </tr>
   `).join("") : `<tr><td colspan="4" class="empty-state">No spending categories for the current filters.</td></tr>`;
+  const hasExtraCategories = allCategoryRows.length > 8;
+  els.toggleCategorySummary.hidden = !hasExtraCategories;
+  els.toggleCategorySummary.textContent = state.showAllCategories
+    ? `Show top 8`
+    : `Show all (${numberFormat(allCategoryRows.length)})`;
 
   els.forecastSummaryBody.innerHTML = forecastRows.length ? forecastRows.map((row) => `
     <tr>

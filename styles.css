@@ -640,6 +640,15 @@ tbody tr:hover {
   gap: 18px;
 }
 
+.table-footer-action {
+  margin-top: -6px;
+  margin-bottom: 4px;
+}
+
+.table-footer-action .btn {
+  padding-inline: 14px;
+}
+
 .table-card td:nth-child(3),
 .tax-summary-table td:nth-child(1),
 .tax-summary-table td:nth-child(3) {
