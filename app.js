@@ -1296,28 +1296,28 @@ function renderMonthlySummary() {
       value: moneyFormat(totalDebit),
       subtext: "Visible outgoing total",
       toneClass: "is-negative",
-      sparkValues: monthlyRows.map(([_, value]) => value.debit),
+      sparkValues: monthlyRows.map((row) => row.totalDebit),
     },
     {
       label: "Sum Of All Credit",
       value: moneyFormat(totalCredit),
       subtext: "Visible incoming total",
       toneClass: "is-positive",
-      sparkValues: monthlyRows.map(([_, value]) => value.credit),
+      sparkValues: monthlyRows.map((row) => row.totalCredit),
     },
     {
       label: "Net Cash Flow",
       value: moneyFormat(totalCredit - totalDebit),
       subtext: "Credit minus debit",
       toneClass: totalCredit - totalDebit >= 0 ? "is-positive" : "is-negative",
-      sparkValues: monthlyRows.map(([_, value]) => value.credit - value.debit),
+      sparkValues: monthlyRows.map((row) => row.totalCredit - row.totalDebit),
     },
     {
       label: "Current Balance",
       value: moneyFormat(currentBalance),
       subtext: "Latest visible balance by account",
       toneClass: currentBalance >= 0 ? "is-positive" : "is-negative",
-      sparkValues: buildRunningSeries(monthlyRows.map(([_, value]) => value.credit - value.debit)),
+      sparkValues: buildRunningSeries(monthlyRows.map((row) => row.totalCredit - row.totalDebit)),
     },
   ];
 
