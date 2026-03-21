@@ -197,6 +197,8 @@ function cacheElements() {
   els.nextPage = document.getElementById("next-page");
   els.pageIndicator = document.getElementById("page-indicator");
   els.paginationBar = document.getElementById("pagination-bar");
+  els.pageJumpInput = document.getElementById("page-jump-input");
+  els.pageJumpBtn = document.getElementById("page-jump-btn");
 }
 
 function bindEvents() {
@@ -268,6 +270,13 @@ function bindEvents() {
     if (state.currentPage < totalPages) {
       state.currentPage += 1;
       renderTransactionsTable({ preservePaginationPosition: true });
+    }
+  });
+  els.pageJumpBtn.addEventListener("click", () => jumpToPage());
+  els.pageJumpInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToPage();
     }
   });
 
@@ -1072,6 +1081,7 @@ function populateSelect(select, values, allLabel, currentValue) {
 function renderMetrics() {
   const latestImport = [...state.imports].sort((a, b) => b.importedAt.localeCompare(a.importedAt))[0];
   const balances = summarizeAccountBalances(state.transactions);
+  const gbpRate = getGbpToMurRate();
   const metrics = [
     {
       label: "SBM",
@@ -1085,8 +1095,8 @@ function renderMetrics() {
     },
     {
       label: "MCB GBP",
-      value: `${moneyFormat(balances.mcbGbp)} GBP`,
-      subtext: `${moneyFormat(balances.mcbGbpInMur)} MUR equivalent`,
+      value: moneyFormat(balances.mcbGbpInMur),
+      subtext: `${numberFormat(balances.mcbGbp)} GBP (rate ${gbpRate.toFixed(2)})`,
     },
     {
       label: "Sum Of All",
@@ -1173,6 +1183,8 @@ function renderTransactionsTable(options = {}) {
   els.pageIndicator.textContent = `Page ${state.currentPage} of ${totalPages}`;
   els.prevPage.disabled = state.currentPage === 1;
   els.nextPage.disabled = state.currentPage === totalPages;
+  els.pageJumpInput.max = String(totalPages);
+  els.pageJumpInput.value = String(state.currentPage);
 
   if (!pageRows.length) {
     els.transactionsBody.innerHTML = `<tr><td colspan="8" class="empty-state">No transactions match the current filters.</td></tr>`;
@@ -1194,6 +1206,14 @@ function renderTransactionsTable(options = {}) {
   restorePaginationPosition(previousPaginationTop);
 }
 
+function jumpToPage() {
+  const totalPages = Math.max(1, Math.ceil(state.filteredTransactions.length / state.pageSize));
+  const requestedPage = Number(els.pageJumpInput.value || 1);
+  if (!Number.isFinite(requestedPage)) return;
+  state.currentPage = Math.min(totalPages, Math.max(1, Math.round(requestedPage)));
+  renderTransactionsTable({ preservePaginationPosition: true });
+}
+
 function restorePaginationPosition(previousPaginationTop) {
   if (previousPaginationTop === null || !els.paginationBar) return;
 
@@ -1205,6 +1225,36 @@ function restorePaginationPosition(previousPaginationTop) {
       behavior: "auto",
     });
   });
+}
+
+function buildRunningSeries(values) {
+  let running = 0;
+  return values.map((value) => {
+    running += value;
+    return running;
+  });
+}
+
+function renderSparkline(values, toneClass = "") {
+  const safeValues = values.length ? values : [0];
+  const width = 132;
+  const height = 34;
+  const min = Math.min(...safeValues);
+  const max = Math.max(...safeValues);
+  const span = max - min || 1;
+  const step = safeValues.length > 1 ? width / (safeValues.length - 1) : width;
+  const points = safeValues.map((value, index) => {
+    const x = safeValues.length > 1 ? index * step : width / 2;
+    const y = height - (((value - min) / span) * (height - 6) + 3);
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(" ");
+  const sparkClass = toneClass === "is-negative" ? "negative" : "positive";
+
+  return `
+    <svg class="metric-sparkline ${sparkClass}" viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false">
+      <polyline points="${points}"></polyline>
+    </svg>
+  `;
 }
 
 function renderMonthlySummary() {
@@ -1244,24 +1294,28 @@ function renderMonthlySummary() {
       value: moneyFormat(totalDebit),
       subtext: "Visible outgoing total",
       toneClass: "is-negative",
+      sparkValues: monthlyRows.map(([_, value]) => value.debit),
     },
     {
       label: "Sum Of All Credit",
       value: moneyFormat(totalCredit),
       subtext: "Visible incoming total",
       toneClass: "is-positive",
+      sparkValues: monthlyRows.map(([_, value]) => value.credit),
     },
     {
       label: "Net Cash Flow",
       value: moneyFormat(totalCredit - totalDebit),
       subtext: "Credit minus debit",
       toneClass: totalCredit - totalDebit >= 0 ? "is-positive" : "is-negative",
+      sparkValues: monthlyRows.map(([_, value]) => value.credit - value.debit),
     },
     {
       label: "Current Balance",
       value: moneyFormat(currentBalance),
       subtext: "Latest visible balance by account",
       toneClass: currentBalance >= 0 ? "is-positive" : "is-negative",
+      sparkValues: buildRunningSeries(monthlyRows.map(([_, value]) => value.credit - value.debit)),
     },
   ];
 
@@ -1270,6 +1324,7 @@ function renderMonthlySummary() {
       <div class="metric-label">${escapeHtml(metric.label)}</div>
       <div class="metric-value">${escapeHtml(metric.value)}</div>
       <div class="metric-subtext">${escapeHtml(metric.subtext)}</div>
+      ${renderSparkline(metric.sparkValues, metric.toneClass)}
     </article>
   `).join("");
 

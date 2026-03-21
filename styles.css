@@ -125,6 +125,14 @@ h3 {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.overview-actions .mini-log-caption {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid var(--line);
 }
 
 .overlay-panel {
@@ -133,7 +141,7 @@ h3 {
   z-index: 30;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: 24px;
 }
 
@@ -154,6 +162,7 @@ h3 {
   max-height: calc(100vh - 48px);
   overflow: auto;
   padding: 22px;
+  margin: 0 auto;
 }
 
 .overlay-header {
@@ -429,6 +438,28 @@ h3 {
   font-size: 0.95rem;
 }
 
+.metric-sparkline {
+  width: 100%;
+  height: 34px;
+  margin-top: 12px;
+  overflow: visible;
+}
+
+.metric-sparkline polyline {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.metric-sparkline.positive polyline {
+  stroke: rgba(17, 94, 89, 0.7);
+}
+
+.metric-sparkline.negative polyline {
+  stroke: rgba(163, 51, 61, 0.72);
+}
+
 .filters-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -656,6 +687,31 @@ tbody tr:hover {
   align-items: center;
   gap: 12px;
   margin-top: 16px;
+}
+
+.page-jump {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.page-jump-label {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.page-jump-input {
+  width: 88px;
+  min-height: 42px;
+  padding: 8px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
 }
 
 .dual-tables {
