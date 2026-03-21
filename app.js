@@ -2071,14 +2071,28 @@ function estimateRecurringMonthlySpend(transactions) {
     monthTotals.set(monthKey, (monthTotals.get(monthKey) || 0) + toInsightAmount(txn.debit, txn.currency));
   });
 
-  const recentMonths = [];
+  const historyMonths = [];
   let cursor = new Date(`${latestDate.slice(0, 7)}-01T00:00:00`);
-  for (let i = 0; i < 12; i += 1) {
-    recentMonths.unshift(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+  for (let i = 0; i < 36; i += 1) {
+    historyMonths.unshift(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
     cursor.setMonth(cursor.getMonth() - 1);
   }
 
-  return average(recentMonths.map((monthKey) => monthTotals.get(monthKey) || 0));
+  const historySeries = historyMonths.map((monthKey) => monthTotals.get(monthKey) || 0);
+  const observedValues = historySeries.filter((value) => value > 0);
+  if (!observedValues.length) {
+    return 0;
+  }
+  if (observedValues.length < 6) {
+    return average(observedValues);
+  }
+
+  const longTermBaseline = winsorizedAverage(historySeries, 0.1, 0.9);
+  const recentSeries = historySeries.slice(-12);
+  const recentMedian = median(recentSeries);
+  const trendProjection = projectSpendRunRate(historySeries);
+
+  return Math.max(0, 0.5 * longTermBaseline + 0.3 * recentMedian + 0.2 * trendProjection);
 }
 
 function estimateSpendingAccountShares(transactions, forecastRows) {
@@ -2227,6 +2241,53 @@ function average(values) {
     return 0;
   }
   return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function median(values) {
+  if (!values.length) {
+    return 0;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  return percentile(sorted, 0.5);
+}
+
+function winsorizedAverage(values, lowerRatio = 0.1, upperRatio = 0.9) {
+  if (!values.length) {
+    return 0;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const lowerBound = percentile(sorted, lowerRatio);
+  const upperBound = percentile(sorted, upperRatio);
+  const cappedValues = values.map((value) => Math.min(upperBound, Math.max(lowerBound, value)));
+  return average(cappedValues);
+}
+
+function projectSpendRunRate(historySeries) {
+  if (!historySeries.length) {
+    return 0;
+  }
+
+  const modeledSeries = historySeries.slice(-18);
+  if (modeledSeries.filter((value) => value > 0).length < 4) {
+    return winsorizedAverage(historySeries, 0.15, 0.85);
+  }
+
+  const smoothedSeries = modeledSeries.map((_, index) => {
+    const start = Math.max(0, index - 1);
+    const end = Math.min(modeledSeries.length, index + 2);
+    return winsorizedAverage(modeledSeries.slice(start, end), 0.15, 0.85);
+  });
+  const regression = linearRegression(smoothedSeries.map((value, index) => ({
+    x: index + 1,
+    y: value,
+  })));
+  const projectedValues = Array.from({ length: 3 }, (_, index) => (
+    regression.intercept + regression.slope * (smoothedSeries.length + index + 1)
+  ));
+  const sorted = [...historySeries].sort((a, b) => a - b);
+  const floor = Math.max(0, percentile(sorted, 0.2) * 0.85);
+  const ceiling = percentile(sorted, 0.85) * 1.15 + 25000;
+  return average(projectedValues.map((value) => Math.min(ceiling, Math.max(floor, value))));
 }
 
 function projectFutureMonthlyValues(monthSeries, lastMonthNumber, monthsRemaining) {
