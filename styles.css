@@ -184,7 +184,7 @@ h3 {
   width: min(1240px, calc(100vw - 32px));
   max-height: calc(100vh - 48px);
   overflow: auto;
-  padding: 22px;
+  padding: 26px;
   margin: 0 auto;
 }
 
@@ -200,13 +200,18 @@ h3 {
   min-width: 0;
 }
 
-.control-actions {
+.control-topline {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.control-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  margin-bottom: 12px;
 }
 
 .btn {
@@ -261,10 +266,29 @@ h3 {
 }
 
 .status-pill {
-  padding: 8px 12px;
+  padding: 10px 16px;
   border-radius: 999px;
-  background: rgba(15, 118, 110, 0.08);
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.1), rgba(15, 118, 110, 0.05));
+  color: var(--primary-strong);
+  font-size: 0.96rem;
   font-weight: 700;
+}
+
+.utility-groups {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.utility-group {
+  display: grid;
+  gap: 8px;
+}
+
+.danger-group .mini-label {
+  color: var(--danger);
 }
 
 .top-statuses {
@@ -281,22 +305,44 @@ h3 {
 }
 
 .icon-btn {
-  min-width: 54px;
-  height: 38px;
-  padding: 0 12px;
+  min-width: 62px;
+  height: 42px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 16px;
   background: rgba(15, 118, 110, 0.08);
   color: var(--primary-strong);
   font: inherit;
   font-weight: 800;
   cursor: pointer;
-  transition: transform 180ms ease, background 180ms ease;
+  transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
 }
 
 .icon-btn:hover {
   transform: translateY(-1px);
   background: rgba(15, 118, 110, 0.14);
+}
+
+.icon-btn-primary {
+  background: linear-gradient(135deg, var(--primary), #1d8d82);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.22);
+}
+
+.icon-btn-primary:hover {
+  background: linear-gradient(135deg, #11847a, #23998e);
+}
+
+.icon-btn-subtle {
+  min-width: 0;
+  padding-inline: 18px;
+  background: rgba(20, 38, 29, 0.05);
+  color: #4c5d53;
+  font-weight: 700;
+}
+
+.icon-btn-subtle:hover {
+  background: rgba(20, 38, 29, 0.08);
 }
 
 .icon-btn.danger {
@@ -341,7 +387,7 @@ h3 {
 
 .drop-zone.compact {
   min-height: 100%;
-  padding: 18px;
+  padding: 24px 20px;
 }
 
 .drop-zone.compact .drop-icon {
@@ -357,6 +403,14 @@ h3 {
 .drop-zone.drag-over {
   transform: translateY(-2px) scale(1.01);
   border-color: var(--primary);
+}
+
+.drop-zone.compact:hover {
+  transform: translateY(-2px);
+  border-color: rgba(15, 118, 110, 0.4);
+  background:
+    radial-gradient(circle at top, rgba(15, 118, 110, 0.12), transparent 52%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 247, 245, 0.92));
 }
 
 .drop-icon {
@@ -382,6 +436,7 @@ h3 {
 
 .drop-subtitle {
   margin: 10px 0 0;
+  max-width: 28ch;
 }
 
 .import-log {
@@ -393,15 +448,15 @@ h3 {
 }
 
 .import-log.compact {
-  margin-top: 10px;
-  min-height: 82px;
-  max-height: 118px;
-  font-size: 0.98rem;
+  margin-top: 8px;
+  min-height: 56px;
+  max-height: 110px;
+  font-size: 0.94rem;
 }
 
 .mini-log-shell {
-  margin-top: 12px;
-  padding: 12px 14px;
+  margin-top: 14px;
+  padding: 16px 18px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.58);
   border: 1px solid var(--line);
@@ -422,6 +477,16 @@ h3 {
   color: var(--muted-soft);
   font-size: 0.84rem;
   line-height: 1.35;
+}
+
+.import-attribution {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(20, 38, 29, 0.08);
+}
+
+.drop-kicker {
+  margin-bottom: 10px;
 }
 
 .metrics-grid {

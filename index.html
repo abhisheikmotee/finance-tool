@@ -218,19 +218,37 @@
         <div>
           <p class="section-kicker">Ledger File</p>
           <h2 id="import-panel-title">Persistent Import Controls</h2>
+          <p class="section-note">Open your ledger, import statements, and save updates back to disk.</p>
         </div>
-        <button id="close-import-panel" class="icon-btn" type="button" aria-label="Close import controls">Close</button>
+        <button id="close-import-panel" class="icon-btn icon-btn-subtle" type="button" aria-label="Close import controls">Close</button>
       </div>
       <div class="control-bar">
         <div class="control-copy">
           <div class="control-actions">
-            <div id="import-status" class="status-pill">Ready</div>
-            <div class="utility-actions">
-              <button id="new-ledger-btn" class="icon-btn" title="Create Ledger File" aria-label="Create Ledger File">New</button>
-              <button id="choose-ledger-btn" class="icon-btn" title="Open Ledger File" aria-label="Open Ledger File">Open</button>
-              <button id="save-ledger-btn" class="icon-btn" title="Save Ledger" aria-label="Save Ledger">Save</button>
-              <button id="export-btn" class="icon-btn" title="Export Transactions CSV" aria-label="Export Transactions CSV">CSV</button>
-              <button id="reset-btn" class="icon-btn danger" title="Clear Ledger Data" aria-label="Clear Ledger Data">Clear</button>
+            <div class="control-topline">
+              <div id="import-status" class="status-pill">Ready</div>
+            </div>
+            <div class="utility-groups">
+              <div class="utility-group">
+                <div class="mini-label">Ledger Actions</div>
+                <div class="utility-actions">
+                  <button id="new-ledger-btn" class="icon-btn" title="Create Ledger File" aria-label="Create Ledger File">New</button>
+                  <button id="choose-ledger-btn" class="icon-btn icon-btn-primary" title="Open Ledger File" aria-label="Open Ledger File">Open</button>
+                  <button id="save-ledger-btn" class="icon-btn" title="Save Ledger" aria-label="Save Ledger">Save</button>
+                </div>
+              </div>
+              <div class="utility-group">
+                <div class="mini-label">Export</div>
+                <div class="utility-actions">
+                  <button id="export-btn" class="icon-btn" title="Export Transactions CSV" aria-label="Export Transactions CSV">CSV</button>
+                </div>
+              </div>
+              <div class="utility-group danger-group">
+                <div class="mini-label">Reset</div>
+                <div class="utility-actions">
+                  <button id="reset-btn" class="icon-btn danger" title="Clear Ledger Data" aria-label="Clear Ledger Data">Clear</button>
+                </div>
+              </div>
             </div>
           </div>
           <div id="ledger-status" class="ledger-banner">Choose or create a ledger file to persist data on disk.</div>
@@ -240,7 +258,7 @@
               <span class="mini-log-caption">Latest actions</span>
             </div>
             <div id="import-log" class="import-log compact"></div>
-            <div class="mini-log-caption">
+            <div class="mini-log-caption import-attribution">
               Rates by <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">ExchangeRate-API</a>
             </div>
           </div>
@@ -249,8 +267,9 @@
           <input id="file-input" type="file" accept=".csv,.CSV,.tsv,.TSV" multiple hidden>
           <input id="ledger-file-input" type="file" accept=".json" hidden>
           <div class="drop-icon">+</div>
+          <p class="section-kicker drop-kicker">Statement Import</p>
           <p class="drop-title">Drop statement files</p>
-          <p class="drop-subtitle">Quick import area for CSV and TSV exports</p>
+          <p class="drop-subtitle">Drop CSV or TSV files here, or click to browse and import.</p>
         </label>
       </div>
     </section>
