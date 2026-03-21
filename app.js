@@ -142,6 +142,10 @@ const state = {
     excludeTransfers: false,
     bankOnly: "all",
   },
+  tableSort: {
+    key: "txnDate",
+    direction: "desc",
+  },
   showAllCategories: false,
 };
 
@@ -159,10 +163,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function cacheElements() {
-  els.heroLedgerName = document.getElementById("hero-ledger-name");
-  els.heroLedgerStatus = document.getElementById("hero-ledger-status");
-  els.heroImportBtn = document.getElementById("hero-import-btn");
-  els.heroSaveBtn = document.getElementById("hero-save-btn");
   els.fileInput = document.getElementById("file-input");
   els.ledgerFileInput = document.getElementById("ledger-file-input");
   els.exportBtn = document.getElementById("export-btn");
@@ -183,14 +183,16 @@ function cacheElements() {
   els.searchInput = document.getElementById("search-input");
   els.accountFilter = document.getElementById("account-filter");
   els.quickFilterChips = document.getElementById("quick-filter-chips");
+  els.clearFiltersBtn = document.getElementById("clear-filters-btn");
+  els.activeFilterSummary = document.getElementById("active-filter-summary");
   els.fromDate = document.getElementById("from-date");
   els.toDate = document.getElementById("to-date");
   els.pageSize = document.getElementById("page-size");
   els.transactionsBody = document.getElementById("transactions-body");
   els.monthlySummaryMetrics = document.getElementById("monthly-summary-metrics");
   els.monthlySummaryBody = document.getElementById("monthly-summary-body");
-  els.monthlyFlowChart = document.getElementById("monthly-flow-chart");
   els.categorySummaryBody = document.getElementById("category-summary-body");
+  els.categoryBarList = document.getElementById("category-bar-list");
   els.toggleCategorySummary = document.getElementById("toggle-category-summary");
   els.forecastSummaryBody = document.getElementById("forecast-summary-body");
   els.forecastSummaryCards = document.getElementById("forecast-summary-cards");
@@ -209,8 +211,6 @@ function cacheElements() {
 }
 
 function bindEvents() {
-  els.heroImportBtn.addEventListener("click", openImportPanel);
-  els.heroSaveBtn.addEventListener("click", saveLedgerToDisk);
   els.chooseLedgerBtn.addEventListener("click", openExistingLedger);
   els.newLedgerBtn.addEventListener("click", createNewLedger);
   els.saveLedgerBtn.addEventListener("click", saveLedgerToDisk);
@@ -260,6 +260,8 @@ function bindEvents() {
   });
 
   els.quickFilterChips.addEventListener("click", handleQuickFilterChipClick);
+  els.clearFiltersBtn.addEventListener("click", clearFilters);
+  document.querySelector(".table-card thead")?.addEventListener("click", handleTableSortClick);
 
   els.pageSize.addEventListener("change", () => {
     state.pageSize = Number(els.pageSize.value);
@@ -311,6 +313,22 @@ function onFilterChange() {
   renderAll();
 }
 
+function clearFilters() {
+  state.quickFilters = {
+    datePreset: "this-year",
+    salaryOnly: false,
+    excludeTransfers: false,
+    bankOnly: "all",
+  };
+  els.searchInput.value = "";
+  els.accountFilter.value = "all";
+  els.fromDate.value = "";
+  els.toDate.value = "";
+  state.currentPage = 1;
+  applyFilters();
+  renderAll();
+}
+
 function handleQuickFilterChipClick(event) {
   const button = event.target.closest("[data-chip]");
   if (!button) return;
@@ -324,6 +342,25 @@ function handleQuickFilterChipClick(event) {
     state.quickFilters.excludeTransfers = !state.quickFilters.excludeTransfers;
   } else if (chip === "sbm-only" || chip === "mcb-only") {
     state.quickFilters.bankOnly = state.quickFilters.bankOnly === chip ? "all" : chip;
+  }
+
+  state.currentPage = 1;
+  applyFilters();
+  renderAll();
+}
+
+function handleTableSortClick(event) {
+  const trigger = event.target.closest("[data-sort-key]");
+  if (!trigger) return;
+
+  const nextKey = trigger.getAttribute("data-sort-key");
+  if (!nextKey) return;
+
+  if (state.tableSort.key === nextKey) {
+    state.tableSort.direction = state.tableSort.direction === "asc" ? "desc" : "asc";
+  } else {
+    state.tableSort.key = nextKey;
+    state.tableSort.direction = nextKey === "txnDate" ? "desc" : "asc";
   }
 
   state.currentPage = 1;
@@ -1017,7 +1054,7 @@ function applyFilters() {
       && matchesTransfer
       && matchesBank;
   });
-  state.sortedTransactions = [...state.filteredTransactions];
+  state.sortedTransactions = sortTransactions(state.filteredTransactions);
 }
 
 function openImportPanel() {
@@ -1034,6 +1071,7 @@ function renderAll() {
   renderLedgerStatus();
   renderFilterOptions();
   renderQuickFilterChips();
+  renderActiveFilterSummary();
   renderMetrics();
   renderTransactionsTable();
   renderMonthlySummary();
@@ -1067,17 +1105,6 @@ function renderLedgerStatus() {
   } else if (supportsFileSystemAccess()) {
     updateLedgerStatus("Choose or create a ledger file. Data is saved outside browser cache.");
   }
-
-  if (els.heroLedgerName) {
-    els.heroLedgerName.textContent = state.ledgerName || "No ledger selected";
-  }
-  if (els.heroLedgerStatus) {
-    const totalRows = numberFormat(state.transactions.length);
-    const fileMode = state.ledgerName
-      ? `${totalRows} transaction${state.transactions.length === 1 ? "" : "s"} available`
-      : "Choose or create a ledger file to get started";
-    els.heroLedgerStatus.textContent = fileMode;
-  }
 }
 
 function renderFilterOptions() {
@@ -1097,6 +1124,65 @@ function populateSelect(select, values, allLabel, currentValue) {
   if (values.includes(currentValue)) {
     select.value = currentValue;
   }
+}
+
+function renderActiveFilterSummary() {
+  const pills = [];
+  const query = els.searchInput.value.trim();
+  const account = els.accountFilter.value || "all";
+  const { fromDate, toDate } = getEffectiveDateRange();
+
+  if (query) pills.push({ label: "Search", value: query });
+  if (account !== "all") pills.push({ label: "Account", value: account });
+  if (fromDate || toDate) {
+    pills.push({
+      label: "Window",
+      value: `${fromDate || "Start"} - ${toDate || "Now"}`,
+    });
+  }
+  if (!els.fromDate.value && !els.toDate.value && state.quickFilters.datePreset !== "all") {
+    pills.push({ label: "Preset", value: prettifyChipLabel(state.quickFilters.datePreset) });
+  }
+  if (state.quickFilters.salaryOnly) pills.push({ label: "Quick", value: "Salary only" });
+  if (state.quickFilters.excludeTransfers) pills.push({ label: "Quick", value: "Transfers excluded" });
+  if (state.quickFilters.bankOnly === "sbm-only") pills.push({ label: "Bank", value: "SBM only" });
+  if (state.quickFilters.bankOnly === "mcb-only") pills.push({ label: "Bank", value: "MCB only" });
+
+  els.activeFilterSummary.hidden = pills.length === 0;
+  els.activeFilterSummary.innerHTML = pills.map((pill) => `
+    <div class="active-filter-pill"><strong>${escapeHtml(pill.label)}:</strong> ${escapeHtml(pill.value)}</div>
+  `).join("");
+}
+
+function prettifyChipLabel(value) {
+  return value
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function sortTransactions(rows) {
+  const direction = state.tableSort.direction === "asc" ? 1 : -1;
+  const picker = {
+    txnDate: (txn) => txn.txnDate,
+    accountLabel: (txn) => txn.accountLabel,
+    description: (txn) => txn.description,
+    debit: (txn) => txn.debit,
+    credit: (txn) => txn.credit,
+    balance: (txn) => txn.balance,
+  }[state.tableSort.key] || ((txn) => txn.txnDate);
+
+  return [...rows].sort((a, b) => {
+    const aValue = picker(a);
+    const bValue = picker(b);
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      return direction * (aValue - bValue || a.txnDate.localeCompare(b.txnDate));
+    }
+    return direction * (
+      String(aValue).localeCompare(String(bValue))
+      || a.txnDate.localeCompare(b.txnDate)
+      || a.accountLabel.localeCompare(b.accountLabel)
+    );
+  });
 }
 
 function renderMetrics() {
@@ -1206,6 +1292,7 @@ function renderTransactionsTable(options = {}) {
   els.nextPage.disabled = state.currentPage === totalPages;
   els.pageJumpInput.max = String(totalPages);
   els.pageJumpInput.value = String(state.currentPage);
+  renderTableSortState();
 
   if (!pageRows.length) {
     els.transactionsBody.innerHTML = `<tr><td colspan="6" class="empty-state">No transactions match the current filters.</td></tr>`;
@@ -1213,38 +1300,27 @@ function renderTransactionsTable(options = {}) {
     return;
   }
 
-  let previousMonth = "";
-  let monthBandIndex = -1;
-  els.transactionsBody.classList.add("transactions-body");
-  els.transactionsBody.innerHTML = pageRows.map((txn) => {
-    const monthKey = txn.txnDate.slice(0, 7);
-    if (monthKey !== previousMonth) {
-      previousMonth = monthKey;
-      monthBandIndex += 1;
-    }
-    const monthBandClass = monthBandIndex % 2 === 0 ? "month-band-even" : "month-band-odd";
-
-    return `
-      <tr class="${monthBandClass}">
-        <td class="txn-date-cell">
-          <div class="txn-date-main">${escapeHtml(formatDate(txn.txnDate))}</div>
-          <div class="txn-date-sub">${escapeHtml(formatMonthLong(monthKey))}</div>
-        </td>
-        <td>${escapeHtml(txn.accountLabel)}</td>
-        <td>
-          <div class="txn-description">
-            <div class="txn-description-main">${escapeHtml(txn.description || "No description")}</div>
-            <div class="txn-description-sub">${escapeHtml(txn.reference || txn.sourceFile || "No reference")}</div>
-          </div>
-        </td>
-        <td class="numeric-cell ${txn.debit > 0 ? "amount-negative" : ""}">${moneyFormat(txn.debit)}</td>
-        <td class="numeric-cell ${txn.credit > 0 ? "amount-positive" : ""}">${moneyFormat(txn.credit)}</td>
-        <td class="numeric-cell">${moneyFormat(txn.balance)}</td>
-      </tr>
-    `;
-  }).join("");
+  els.transactionsBody.innerHTML = pageRows.map((txn) => `
+    <tr>
+      <td>${escapeHtml(txn.txnDate)}</td>
+      <td>${escapeHtml(txn.accountLabel)}</td>
+      <td>${escapeHtml(txn.description)}</td>
+      <td class="${txn.debit > 0 ? "amount-negative" : ""}">${moneyFormat(txn.debit)}</td>
+      <td class="${txn.credit > 0 ? "amount-positive" : ""}">${moneyFormat(txn.credit)}</td>
+      <td>${moneyFormat(txn.balance)}</td>
+    </tr>
+  `).join("");
 
   restorePaginationPosition(previousPaginationTop);
+}
+
+function renderTableSortState() {
+  document.querySelectorAll("[data-sort-key]").forEach((button) => {
+    button.classList.remove("sort-asc", "sort-desc");
+    if (button.getAttribute("data-sort-key") === state.tableSort.key) {
+      button.classList.add(state.tableSort.direction === "asc" ? "sort-asc" : "sort-desc");
+    }
+  });
 }
 
 function jumpToPage() {
@@ -1339,10 +1415,6 @@ function renderMonthlySummary() {
   const monthlySeries = Array.from(monthTotals.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   const monthlyDebitSeries = monthlySeries.map(([_, value]) => value.debit);
   const monthlyCreditSeries = monthlySeries.map(([_, value]) => value.credit);
-  const monthlyNetSeries = monthlySeries.map(([month, value]) => ({
-    month,
-    net: value.credit - value.debit,
-  }));
   const avgMonthlyDebit = monthlyDebitSeries.length ? average(monthlyDebitSeries) : 0;
   const avgMonthlyCredit = monthlyCreditSeries.length ? average(monthlyCreditSeries) : 0;
   const currentBalance = Array.from(latestBalanceByAccount.values())
@@ -1367,7 +1439,7 @@ function renderMonthlySummary() {
       value: moneyFormat(totalCredit - totalDebit),
       subtext: "Credit minus debit",
       toneClass: totalCredit - totalDebit >= 0 ? "is-positive" : "is-negative",
-      sparkValues: monthlyNetSeries.map((row) => row.net),
+      sparkValues: monthlyRows.map((row) => row.totalCredit - row.totalDebit),
     },
     {
       label: "Current Balance",
@@ -1392,7 +1464,6 @@ function renderMonthlySummary() {
       </div>
     </article>
   `).join("");
-  renderMonthlyFlowChart(monthlyNetSeries);
 
   if (!monthlyRows.length) {
     els.monthlySummaryBody.innerHTML = `<tr><td colspan="5" class="empty-state">No monthly insights for the current filters.</td></tr>`;
@@ -1417,49 +1488,6 @@ function renderMonthlySummary() {
     </tr>
   `;
   }).join("");
-}
-
-function renderMonthlyFlowChart(monthlyNetSeries) {
-  if (!monthlyNetSeries.length) {
-    els.monthlyFlowChart.innerHTML = `<foreignObject x="0" y="0" width="720" height="240"><div xmlns="http://www.w3.org/1999/xhtml" class="trend-empty">No visible monthly cash-flow history yet.</div></foreignObject>`;
-    return;
-  }
-
-  const width = 720;
-  const height = 240;
-  const pad = { top: 20, right: 18, bottom: 44, left: 54 };
-  const values = monthlyNetSeries.map((item) => item.net);
-  const min = Math.min(0, ...values);
-  const max = Math.max(0, ...values);
-  const range = Math.max(1, max - min);
-  const plotWidth = width - pad.left - pad.right;
-  const plotHeight = height - pad.top - pad.bottom;
-  const step = plotWidth / monthlyNetSeries.length;
-  const barWidth = Math.max(24, step * 0.58);
-  const yForValue = (value) => pad.top + ((max - value) / range) * plotHeight;
-  const zeroY = yForValue(0);
-  const gridValues = [max, 0, min].filter((value, index, array) => array.indexOf(value) === index);
-
-  els.monthlyFlowChart.innerHTML = `
-    ${gridValues.map((value) => `
-      <g>
-        <line class="${Math.abs(value) < 0.0001 ? "bar-zero-line" : "bar-gridline"}" x1="${pad.left}" y1="${yForValue(value)}" x2="${width - pad.right}" y2="${yForValue(value)}"></line>
-        <text class="bar-label" x="12" y="${yForValue(value) + 4}">${escapeHtml(compactMoneyFormat(value))}</text>
-      </g>
-    `).join("")}
-    ${monthlyNetSeries.map((item, index) => {
-      const x = pad.left + step * index + (step - barWidth) / 2;
-      const y = item.net >= 0 ? yForValue(item.net) : zeroY;
-      const barHeight = Math.max(4, Math.abs(zeroY - yForValue(item.net)));
-      return `
-        <g>
-          <rect class="${item.net >= 0 ? "bar-positive" : "bar-negative"}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="8"></rect>
-          <text class="bar-label" x="${(x + barWidth / 2).toFixed(2)}" y="${height - 18}" text-anchor="middle">${escapeHtml(formatMonthShort(item.month))}</text>
-          <text class="bar-value-label" x="${(x + barWidth / 2).toFixed(2)}" y="${item.net >= 0 ? y - 8 : y + barHeight + 14}" text-anchor="middle">${escapeHtml(compactMoneyFormat(item.net))}</text>
-        </g>
-      `;
-    }).join("")}
-  `;
 }
 
 function renderTrendInsights() {
@@ -1571,6 +1599,7 @@ function renderTrendInsights() {
 
   const allCategoryRows = Array.from(categoryMap.values()).sort((a, b) => b.total - a.total);
   const visibleCategoryRows = state.showAllCategories ? allCategoryRows : allCategoryRows.slice(0, 8);
+  renderCategoryBars(visibleCategoryRows);
   els.categorySummaryBody.innerHTML = visibleCategoryRows.length ? visibleCategoryRows.map((row) => `
     <tr>
       <td>${escapeHtml(row.category)}</td>
@@ -1604,6 +1633,24 @@ function renderTrendInsights() {
       </div>
     </article>
   `).join("") : `<div class="empty-state">No account outlook is available for the current filters.</div>`;
+}
+
+function renderCategoryBars(rows) {
+  if (!rows.length) {
+    els.categoryBarList.innerHTML = `<div class="empty-state">No visible spend categories to compare.</div>`;
+    return;
+  }
+
+  const maxTotal = Math.max(...rows.map((row) => row.total), 1);
+  els.categoryBarList.innerHTML = rows.map((row) => `
+    <div class="category-bar-item">
+      <div class="category-bar-label">${escapeHtml(row.category)}</div>
+      <div class="category-bar-track">
+        <div class="category-bar-fill" style="--fill:${((row.total / maxTotal) * 100).toFixed(2)}%"></div>
+      </div>
+      <div class="category-bar-value">${escapeHtml(compactMoneyFormat(row.total))}</div>
+    </div>
+  `).join("");
 }
 
 function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedClosingBalance = 0, forecastPlan = null) {
@@ -2229,7 +2276,7 @@ async function resetLedgerData() {
 
 function renderTaxTable() {
   if (!state.taxEntries.length) {
-    els.taxBody.innerHTML = `<tr><td colspan="9" class="empty-state">No tax rows yet. Click Add Row to start tracking invoices and CSG.</td></tr>`;
+    els.taxBody.innerHTML = `<tr><td colspan="10" class="empty-state">No tax rows yet. Click Add Row to start tracking invoices and CSG.</td></tr>`;
     return;
   }
 
@@ -2486,12 +2533,6 @@ function updateStatus(text) {
 
 function updateLedgerStatus(text) {
   els.ledgerStatus.textContent = text;
-  if (els.heroLedgerStatus) {
-    els.heroLedgerStatus.textContent = text;
-  }
-  if (els.heroLedgerName) {
-    els.heroLedgerName.textContent = state.ledgerName || "No ledger selected";
-  }
 }
 
 function downloadLedgerSnapshot(text, fileName) {
@@ -2558,14 +2599,6 @@ function compactMoneyFormat(value) {
   });
 }
 
-function formatDate(value) {
-  if (!value) return "";
-  const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : parsed.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-}
-
 function formatDateTime(value) {
   return new Date(value).toLocaleString();
 }
@@ -2585,14 +2618,6 @@ function formatMonthShort(value) {
   const [year, month] = String(value).split("-");
   return new Date(Number(year), Number(month) - 1, 1).toLocaleString(undefined, {
     month: "short",
-  });
-}
-
-function formatMonthLong(value) {
-  const [year, month] = String(value).split("-");
-  return new Date(Number(year), Number(month) - 1, 1).toLocaleString(undefined, {
-    month: "long",
-    year: "numeric",
   });
 }
 

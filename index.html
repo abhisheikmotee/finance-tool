@@ -11,27 +11,8 @@
 </head>
 <body>
   <div class="page-shell">
-    <header class="hero-shell">
-      <div class="hero-copy">
-        <p class="eyebrow">Finance Ledger</p>
-        <h1>See cash position, spot spending drift, and keep tax planning in one place.</h1>
-        <p class="hero-summary">A calmer workspace for importing statements, filtering transaction history, and checking where the year is heading.</p>
-      </div>
-      <div class="hero-side glass-card">
-        <div class="hero-status">
-          <span class="hero-status-label">Ledger</span>
-          <div id="hero-ledger-name" class="hero-ledger-name">No ledger selected</div>
-          <div id="hero-ledger-status" class="hero-ledger-status">Choose or create a ledger file to persist data on disk.</div>
-        </div>
-        <div class="hero-actions">
-          <button id="hero-import-btn" class="btn btn-primary" type="button">Open Import Workspace</button>
-          <button id="hero-save-btn" class="btn btn-secondary" type="button">Save Ledger</button>
-        </div>
-      </div>
-    </header>
-
-    <main class="content-grid dashboard-grid">
-      <section class="glass-card metrics-card dashboard-card">
+    <main class="content-grid">
+      <section class="glass-card metrics-card">
         <div class="section-heading">
           <div>
             <p class="section-kicker">Overview</p>
@@ -45,12 +26,13 @@
         <div id="metrics-grid" class="metrics-grid"></div>
       </section>
 
-      <section class="glass-card filters-card dashboard-card">
+      <section class="glass-card filters-card">
         <div class="section-heading">
           <div>
             <p class="section-kicker">Filter</p>
             <h2>Transactions</h2>
           </div>
+          <button id="clear-filters-btn" class="btn btn-secondary" type="button">Reset Filters</button>
         </div>
         <div id="quick-filter-chips" class="quick-filter-chips" aria-label="Quick filters">
           <button class="filter-chip" type="button" data-chip="this-month">This month</button>
@@ -88,9 +70,10 @@
             </select>
           </label>
         </div>
+        <div id="active-filter-summary" class="active-filter-summary" hidden></div>
       </section>
 
-      <section class="glass-card table-card dashboard-card">
+      <section class="glass-card table-card">
         <div class="section-heading table-heading">
           <div>
             <p class="section-kicker">Ledger</p>
@@ -102,12 +85,12 @@
           <table>
             <thead>
               <tr>
-                <th>Txn Date</th>
-                <th>Account</th>
-                <th>Description</th>
-                <th class="numeric-cell">Debit</th>
-                <th class="numeric-cell">Credit</th>
-                <th class="numeric-cell">Balance</th>
+                <th><button class="sort-btn" type="button" data-sort-key="txnDate">Txn Date</button></th>
+                <th><button class="sort-btn" type="button" data-sort-key="accountLabel">Account</button></th>
+                <th><button class="sort-btn" type="button" data-sort-key="description">Description</button></th>
+                <th class="numeric-cell"><button class="sort-btn align-end" type="button" data-sort-key="debit">Debit</button></th>
+                <th class="numeric-cell"><button class="sort-btn align-end" type="button" data-sort-key="credit">Credit</button></th>
+                <th class="numeric-cell"><button class="sort-btn align-end" type="button" data-sort-key="balance">Balance</button></th>
               </tr>
             </thead>
             <tbody id="transactions-body"></tbody>
@@ -127,7 +110,7 @@
         </div>
       </section>
 
-      <section class="glass-card insights-card dashboard-card">
+      <section class="glass-card insights-card">
         <div class="section-heading">
           <div>
             <p class="section-kicker">Insights</p>
@@ -135,24 +118,15 @@
           </div>
         </div>
         <div id="monthly-summary-metrics" class="metrics-grid trend-grid"></div>
-        <section class="chart-panel">
-          <div class="table-panel-head">
-            <div class="table-panel-title">Flow Trend</div>
-            <div class="table-panel-copy">A quick read on whether visible months are net positive or net negative.</div>
-          </div>
-          <div class="chart-wrap">
-            <svg id="monthly-flow-chart" class="mini-chart" viewBox="0 0 720 240" role="img" aria-label="Monthly cash flow chart"></svg>
-          </div>
-        </section>
         <div class="table-wrap compact">
           <table>
             <thead>
               <tr>
                 <th>Month</th>
                 <th>Account</th>
-                <th class="numeric-cell">Total Debit</th>
-                <th class="numeric-cell">Total Credit</th>
-                <th class="numeric-cell">Net Cash Flow</th>
+                <th>Total Debit</th>
+                <th>Total Credit</th>
+                <th>Net Cash Flow</th>
               </tr>
             </thead>
             <tbody id="monthly-summary-body"></tbody>
@@ -163,14 +137,15 @@
             <div class="table-panel-title">Spending Category</div>
             <div class="table-panel-copy">Largest visible spend buckets in the current filtered view.</div>
           </div>
+          <div id="category-bar-list" class="category-bar-list"></div>
           <div class="table-wrap compact">
             <table>
               <thead>
                 <tr>
                   <th>Category</th>
-                  <th class="numeric-cell">Transactions</th>
-                  <th class="numeric-cell">Total Spend</th>
-                  <th class="numeric-cell">Avg Spend</th>
+                  <th>Transactions</th>
+                  <th>Total Spend</th>
+                  <th>Avg Spend</th>
                 </tr>
               </thead>
               <tbody id="category-summary-body"></tbody>
@@ -182,7 +157,7 @@
         </div>
       </section>
 
-      <section class="glass-card trends-card dashboard-card">
+      <section class="glass-card trends-card">
         <div class="section-heading">
           <div>
             <p class="section-kicker">Planning</p>
@@ -211,7 +186,7 @@
         </section>
       </section>
 
-      <section class="glass-card tax-card dashboard-card">
+      <section class="glass-card tax-card">
         <div class="section-heading">
           <div>
             <p class="section-kicker">Tax</p>
