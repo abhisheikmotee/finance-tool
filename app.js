@@ -331,7 +331,7 @@ function handleQuickFilterChipClick(event) {
   if (!button) return;
 
   const { chip } = button.dataset;
-  if (chip === "this-month" || chip === "last-3-months" || chip === "this-year") {
+  if (chip === "this-month" || chip === "last-3-months" || chip === "this-year" || chip === "last-year") {
     state.quickFilters.datePreset = state.quickFilters.datePreset === chip ? "all" : chip;
   } else if (chip === "salary-only") {
     state.quickFilters.salaryOnly = !state.quickFilters.salaryOnly;
@@ -1101,6 +1101,7 @@ function renderQuickFilterChips() {
     "this-month": !usingManualDates && state.quickFilters.datePreset === "this-month",
     "last-3-months": !usingManualDates && state.quickFilters.datePreset === "last-3-months",
     "this-year": !usingManualDates && state.quickFilters.datePreset === "this-year",
+    "last-year": !usingManualDates && state.quickFilters.datePreset === "last-year",
     "salary-only": state.quickFilters.salaryOnly,
     "transfers-excluded": state.quickFilters.excludeTransfers,
     "sbm-only": state.quickFilters.bankOnly === "sbm-only",
@@ -1641,7 +1642,7 @@ function renderCategoryBars(rows) {
 
   const maxTotal = Math.max(...rows.map((row) => row.total), 1);
   els.categoryBarList.innerHTML = rows.map((row) => `
-    <div class="category-bar-item">
+    <div class="category-bar-item" title="${escapeHtml(`${row.category}: ${moneyFormat(row.total)}`)}">
       <div class="category-bar-label">${escapeHtml(row.category)}</div>
       <div class="category-bar-track">
         <div class="category-bar-fill" style="--fill:${((row.total / maxTotal) * 100).toFixed(2)}%"></div>
@@ -2912,6 +2913,12 @@ function getEffectiveDateRange() {
     return {
       fromDate: formatDateInputValue(new Date(today.getFullYear(), 0, 1)),
       toDate: formatDateInputValue(today),
+    };
+  }
+  if (preset === "last-year") {
+    return {
+      fromDate: formatDateInputValue(new Date(today.getFullYear() - 1, 0, 1)),
+      toDate: formatDateInputValue(new Date(today.getFullYear() - 1, 11, 31)),
     };
   }
   return { fromDate: "", toDate: "" };
