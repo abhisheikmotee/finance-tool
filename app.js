@@ -187,6 +187,7 @@ function cacheElements() {
   els.categorySummaryBody = document.getElementById("category-summary-body");
   els.toggleCategorySummary = document.getElementById("toggle-category-summary");
   els.forecastSummaryBody = document.getElementById("forecast-summary-body");
+  els.forecastSummaryCards = document.getElementById("forecast-summary-cards");
   els.trendlineChart = document.getElementById("trendline-chart");
   els.trendlineSummary = document.getElementById("trendline-summary");
   els.taxBody = document.getElementById("tax-body");
@@ -1288,22 +1289,34 @@ function renderMonthlySummary() {
 
   const monthlyRows = Array.from(summaryMap.values())
     .sort((a, b) => a.month.localeCompare(b.month) || a.accountLabel.localeCompare(b.accountLabel));
+  const monthTotals = Array.from(summaryMap.values()).reduce((map, row) => {
+    const current = map.get(row.month) || { debit: 0, credit: 0 };
+    current.debit += row.totalDebit;
+    current.credit += row.totalCredit;
+    map.set(row.month, current);
+    return map;
+  }, new Map());
+  const monthlySeries = Array.from(monthTotals.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  const monthlyDebitSeries = monthlySeries.map(([_, value]) => value.debit);
+  const monthlyCreditSeries = monthlySeries.map(([_, value]) => value.credit);
+  const avgMonthlyDebit = monthlyDebitSeries.length ? average(monthlyDebitSeries) : 0;
+  const avgMonthlyCredit = monthlyCreditSeries.length ? average(monthlyCreditSeries) : 0;
   const currentBalance = Array.from(latestBalanceByAccount.values())
     .reduce((sum, txn) => sum + toInsightAmount(txn.balance, txn.currency), 0);
   const summaryTiles = [
     {
-      label: "Sum Of All Debit",
+      label: "Debit",
       value: moneyFormat(totalDebit),
-      subtext: "Visible outgoing total",
+      subtext: `Avg ${moneyFormat(avgMonthlyDebit)} per month`,
       toneClass: "is-negative",
-      sparkValues: monthlyRows.map((row) => row.totalDebit),
+      sparkValues: monthlyDebitSeries,
     },
     {
-      label: "Sum Of All Credit",
+      label: "Credit",
       value: moneyFormat(totalCredit),
-      subtext: "Visible incoming total",
+      subtext: `Avg ${moneyFormat(avgMonthlyCredit)} per month`,
       toneClass: "is-positive",
-      sparkValues: monthlyRows.map((row) => row.totalCredit),
+      sparkValues: monthlyCreditSeries,
     },
     {
       label: "Net Cash Flow",
@@ -1484,14 +1497,25 @@ function renderTrendInsights() {
     ? `Show top 8`
     : `Show all (${numberFormat(allCategoryRows.length)})`;
 
-  els.forecastSummaryBody.innerHTML = forecastRows.length ? forecastRows.map((row) => `
-    <tr>
-      <td>${escapeHtml(row.accountLabel)}</td>
-      <td>${moneyFormat(row.lastBalance)}</td>
-      <td class="${row.net30 >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(row.net30)}</td>
-      <td class="${row.endOfYear >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(row.endOfYear)}</td>
-    </tr>
-  `).join("") : `<tr><td colspan="4" class="empty-state">No forecast rows for the current filters.</td></tr>`;
+  els.forecastSummaryCards.innerHTML = forecastRows.length ? forecastRows.map((row) => `
+    <article class="forecast-card">
+      <div class="forecast-card-title">${escapeHtml(row.accountLabel)}</div>
+      <div class="forecast-card-grid">
+        <div>
+          <div class="forecast-card-label">Last balance</div>
+          <div class="forecast-card-value">${moneyFormat(row.lastBalance)}</div>
+        </div>
+        <div>
+          <div class="forecast-card-label">30d flow</div>
+          <div class="forecast-card-value ${row.net30 >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(row.net30)}</div>
+        </div>
+        <div>
+          <div class="forecast-card-label">Year-end</div>
+          <div class="forecast-card-value ${row.endOfYear >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(row.endOfYear)}</div>
+        </div>
+      </div>
+    </article>
+  `).join("") : `<div class="empty-state">No account outlook is available for the current filters.</div>`;
 }
 
 function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedClosingBalance = 0, forecastPlan = null) {

@@ -875,6 +875,48 @@ tbody tr:hover {
   overflow: hidden;
 }
 
+.account-outlook-strip {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.forecast-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.forecast-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.forecast-card-title {
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.forecast-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.forecast-card-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-bottom: 4px;
+}
+
+.forecast-card-value {
+  font-weight: 700;
+  color: var(--ink);
+}
+
 .trendline-chart {
   display: block;
   width: 100%;
@@ -956,6 +998,11 @@ tbody tr:hover {
   .metrics-card {
     grid-template-columns: 1fr;
     grid-column: span 12;
+  }
+
+  .forecast-cards,
+  .forecast-card-grid {
+    grid-template-columns: 1fr;
   }
 
   .control-bar {

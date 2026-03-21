@@ -130,6 +130,26 @@
             <tbody id="monthly-summary-body"></tbody>
           </table>
         </div>
+        <div class="table-wrap compact">
+          <div class="table-panel-head">
+            <div class="table-panel-title">Spending Category</div>
+            <div class="table-panel-copy">Largest visible spend buckets in the current filtered view.</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Transactions</th>
+                <th>Total Spend</th>
+                <th>Avg Spend</th>
+              </tr>
+            </thead>
+            <tbody id="category-summary-body"></tbody>
+          </table>
+          <div class="table-footer-action">
+            <button id="toggle-category-summary" class="btn btn-secondary" type="button" hidden>Show all</button>
+          </div>
+        </div>
       </section>
 
       <section class="glass-card trends-card">
@@ -151,46 +171,14 @@
           <div class="trendline-chart-wrap">
             <svg id="trendline-chart" class="trendline-chart" viewBox="0 0 760 280" role="img" aria-label="Expected balance growth forecast chart"></svg>
           </div>
-        </section>
-        <div class="dual-tables">
-          <div class="table-wrap compact">
-            <div class="table-panel-head">
-              <div class="table-panel-title">Forecast Inputs</div>
-              <div class="table-panel-copy">Recurring spend categories used to shape the forward model.</div>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Transactions</th>
-                  <th>Total Spend</th>
-                  <th>Avg Spend</th>
-                </tr>
-              </thead>
-              <tbody id="category-summary-body"></tbody>
-            </table>
-            <div class="table-footer-action">
-              <button id="toggle-category-summary" class="btn btn-secondary" type="button" hidden>Show all</button>
-            </div>
-          </div>
-          <div class="table-wrap compact">
+          <div class="account-outlook-strip">
             <div class="table-panel-head">
               <div class="table-panel-title">Account Outlook</div>
               <div class="table-panel-copy">Latest balance, recent flow, and projected year-end balance by account.</div>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Account</th>
-                  <th>Last Balance</th>
-                  <th>30d Net Flow</th>
-                  <th>End Of Year</th>
-                </tr>
-              </thead>
-              <tbody id="forecast-summary-body"></tbody>
-            </table>
+            <div id="forecast-summary-cards" class="forecast-cards"></div>
           </div>
-        </div>
+        </section>
       </section>
 
       <section class="glass-card tax-card">
