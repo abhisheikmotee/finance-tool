@@ -143,6 +143,7 @@ const state = {
   quickFilters: {
     datePreset: "this-year",
     salaryOnly: false,
+    tradingOnly: false,
     excludeTransfers: false,
     bankOnly: "all",
   },
@@ -314,6 +315,7 @@ function clearFilters() {
   state.quickFilters = {
     datePreset: "this-year",
     salaryOnly: false,
+    tradingOnly: false,
     excludeTransfers: false,
     bankOnly: "all",
   };
@@ -335,6 +337,8 @@ function handleQuickFilterChipClick(event) {
     state.quickFilters.datePreset = state.quickFilters.datePreset === chip ? "all" : chip;
   } else if (chip === "salary-only") {
     state.quickFilters.salaryOnly = !state.quickFilters.salaryOnly;
+  } else if (chip === "trading-only") {
+    state.quickFilters.tradingOnly = !state.quickFilters.tradingOnly;
   } else if (chip === "transfers-excluded") {
     state.quickFilters.excludeTransfers = !state.quickFilters.excludeTransfers;
   } else if (chip === "sbm-only" || chip === "mcb-only") {
@@ -1047,7 +1051,7 @@ function applyFilters() {
   const query = els.searchInput.value.trim().toLowerCase();
   const account = els.accountFilter.value || "all";
   const { fromDate, toDate } = getEffectiveDateRange();
-  const { salaryOnly, excludeTransfers, bankOnly } = state.quickFilters;
+  const { salaryOnly, tradingOnly, excludeTransfers, bankOnly } = state.quickFilters;
 
   state.filteredTransactions = state.transactions.filter((txn) => {
     const matchesQuery = !query || [txn.description, txn.reference, txn.sourceFile, txn.accountLabel]
@@ -1056,6 +1060,7 @@ function applyFilters() {
     const matchesFromDate = !fromDate || txn.txnDate >= fromDate;
     const matchesToDate = !toDate || txn.txnDate <= toDate;
     const matchesSalary = !salaryOnly || isSalaryTransaction(txn);
+    const matchesTrading = !tradingOnly || isTradingTransaction(txn);
     const matchesTransfer = !excludeTransfers || !isTransferTransaction(txn);
     const matchesBank = bankOnly === "all"
       || (bankOnly === "sbm-only" && txn.bankName === "SBM")
@@ -1065,6 +1070,7 @@ function applyFilters() {
       && matchesFromDate
       && matchesToDate
       && matchesSalary
+      && matchesTrading
       && matchesTransfer
       && matchesBank;
   });
@@ -1104,6 +1110,7 @@ function renderQuickFilterChips() {
     "current-tax-year": !usingManualDates && state.quickFilters.datePreset === "current-tax-year",
     "last-year": !usingManualDates && state.quickFilters.datePreset === "last-year",
     "salary-only": state.quickFilters.salaryOnly,
+    "trading-only": state.quickFilters.tradingOnly,
     "transfers-excluded": state.quickFilters.excludeTransfers,
     "sbm-only": state.quickFilters.bankOnly === "sbm-only",
     "mcb-only": state.quickFilters.bankOnly === "mcb-only",
@@ -1161,6 +1168,7 @@ function renderActiveFilterSummary() {
     pills.push({ label: "Preset", value: prettifyChipLabel(state.quickFilters.datePreset) });
   }
   if (state.quickFilters.salaryOnly) pills.push({ label: "Quick", value: "Salary only" });
+  if (state.quickFilters.tradingOnly) pills.push({ label: "Quick", value: "Trading only" });
   if (state.quickFilters.excludeTransfers) pills.push({ label: "Quick", value: "Transfers excluded" });
   if (state.quickFilters.bankOnly === "sbm-only") pills.push({ label: "Bank", value: "SBM only" });
   if (state.quickFilters.bankOnly === "mcb-only") pills.push({ label: "Bank", value: "MCB only" });
@@ -2886,6 +2894,10 @@ function isSalaryTransaction(txn) {
   const text = `${txn.description || ""} ${txn.reference || ""}`.toUpperCase();
   const hasSalaryKeyword = /(SALARY|PAYROLL|WAGE|REMUNERATION)/.test(text);
   return txn.credit > 0 && (hasSalaryKeyword || isSqliSalaryTransfer(txn));
+}
+
+function isTradingTransaction(txn) {
+  return categorizeTransaction(txn) === "Trading / Broker";
 }
 
 function isTransferTransaction(txn) {
