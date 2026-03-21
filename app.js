@@ -1302,7 +1302,7 @@ function renderTrendInsights() {
       forecastEntry.net30 += toInsightNet(txn);
     }
     if (toInsightAmount(txn.debit, txn.currency) > 0) {
-      const category = categorizeDescription(txn.description);
+      const category = categorizeTransaction(txn);
       const categoryEntry = categoryMap.get(category) || { category, count: 0, total: 0 };
       categoryEntry.count += 1;
       categoryEntry.total += toInsightAmount(txn.debit, txn.currency);
@@ -2078,22 +2078,74 @@ function formatMonthShort(value) {
   });
 }
 
-function categorizeDescription(description) {
-  const text = String(description || "").toUpperCase();
+function categorizeTransaction(txn) {
+  const description = txn?.description || "";
+  const reference = txn?.reference || "";
+  const text = `${description} ${reference}`.toUpperCase();
   const patterns = [
     ["DELIVOO", "Food Delivery"],
+    ["KOON PO YUEN", "Dining / Restaurants"],
+    ["HOT & POT", "Dining / Restaurants"],
+    ["KENTUCKY FRIED CHICKEN", "Dining / Restaurants"],
+    ["K.F.C", "Dining / Restaurants"],
+    ["BLUE JUICE", "Dining / Restaurants"],
+    ["NINE DRAGONS", "Dining / Restaurants"],
+    ["STEERS", "Dining / Restaurants"],
+    ["LITTLE ITA", "Dining / Restaurants"],
+    ["LITTLE KING", "Dining / Restaurants"],
+    ["MOVIE STORE", "Dining / Restaurants"],
+    ["JANGO S CAFE", "Dining / Restaurants"],
+    ["CHILLAX", "Dining / Restaurants"],
+    ["SEN & KEN", "Dining / Restaurants"],
+    ["DEBONNAIRS", "Dining / Restaurants"],
+    ["RATATOUILLE", "Dining / Restaurants"],
+    ["RESTOWAY", "Dining / Restaurants"],
+    ["ARTISAN COFFEE", "Dining / Restaurants"],
+    ["EL MONDO", "Dining / Restaurants"],
+    ["NANDO'S", "Dining / Restaurants"],
     ["SCOTT", "Shopping"],
     ["WINNERS", "Shopping"],
+    ["PRICE GURU", "Shopping"],
+    ["ONEOONE MULTIMEDIA", "Shopping"],
+    ["PIONEER MARKETING&TRADING", "Shopping"],
+    ["INTERMART", "Groceries"],
+    ["EBENE PHARMACY", "Pharmacy / Medical"],
+    ["MEDACTIV", "Pharmacy / Medical"],
+    ["PHARMACIE ST JEAN", "Pharmacy / Medical"],
+    ["GALIEN PHARMACY", "Pharmacy / Medical"],
+    ["SMS TOPUP", "Mobile / Telecom"],
+    ["SMS TOP UP", "Mobile / Telecom"],
+    ["EBANKING TOPUP", "Mobile / Telecom"],
+    ["TELECOM", "Mobile / Telecom"],
     ["ICMARKET", "Trading / Broker"],
+    ["MQL5", "Trading / Broker"],
+    ["ICM PAY", "Trading / Broker"],
+    ["IC MARKET", "Trading / Broker"],
+    ["ZULU REPAY", "Trading / Broker"],
+    ["MT4 REPAY", "Trading / Broker"],
+    ["MISSING MT4", "Trading / Broker"],
     ["MRA", "Taxes / Government"],
+    ["CSG", "Taxes / Government"],
     ["STATEINSURANCE", "Insurance"],
     ["LAPRUDENCE", "Insurance"],
     ["CREDIT INTEREST", "Interest"],
+    ["VISA CARD PAYMENT", "Card Repayment"],
+    ["ATM CASH WITHDRAWAL", "Cash Withdrawal"],
+    ["ATM WITHDRAWAL", "Cash Withdrawal"],
+    ["CASH WITHDRAWAL", "Cash Withdrawal"],
+    ["SI EXECUTION CHARGE", "Bank Fees"],
+    ["SI SC DR", "Bank Fees"],
+    ["CHARGE AC-", "Bank Fees"],
+    ["PAYPAL CHARGES", "Bank Fees"],
     ["INWARD TRANSFER", "Transfers In"],
     ["GBP TO SBM", "Transfers Between Own Accounts"],
     ["MCB TO SBM", "Transfers Between Own Accounts"],
     ["JUICE ACCOUNT TRANSFER", "Transfers"],
     ["JUICE TRANSFER", "Transfers"],
+    ["BILL REFUND TO -", "Transfers"],
+    ["BILL REFUND TO /", "Transfers"],
+    ["LENDING TO -", "Transfers"],
+    ["REFUND/", "Transfers"],
   ];
   for (const [needle, label] of patterns) {
     if (text.includes(needle)) return label;
@@ -2111,7 +2163,7 @@ function isSalaryTransaction(txn) {
 }
 
 function isTransferTransaction(txn) {
-  const category = categorizeDescription(txn.description);
+  const category = categorizeTransaction(txn);
   if (category.startsWith("Transfers")) return true;
   const text = `${txn.description || ""} ${txn.reference || ""}`.toUpperCase();
   return text.includes("TRANSFER");

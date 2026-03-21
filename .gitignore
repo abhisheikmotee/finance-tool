@@ -1,2 +1,4 @@
 .DS_Store
 *.code-workspace
+finance-ledger.json
+*:Zone.Identifier
