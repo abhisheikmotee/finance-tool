@@ -5,6 +5,7 @@
   --panel-strong: #fffaf2;
   --ink: #102119;
   --muted: #4d5f54;
+  --muted-soft: #66776d;
   --line: rgba(20, 38, 29, 0.16);
   --primary: #0f766e;
   --primary-strong: #115e59;
@@ -67,28 +68,40 @@ body::before {
 .eyebrow,
 .section-kicker,
 .mini-label {
-  margin: 0 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--primary-strong);
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.1), rgba(15, 118, 110, 0.04));
+  border: 1px solid rgba(15, 118, 110, 0.12);
 }
 
 h2 {
   margin: 0;
   font-family: "Space Grotesk", sans-serif;
   line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: #12231b;
 }
 
 h2 {
-  font-size: 1.55rem;
+  font-size: 1.62rem;
 }
 
 h3 {
   margin: 0;
   font-family: "Space Grotesk", sans-serif;
-  font-size: 1.2rem;
+  font-size: 1.22rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #173027;
 }
 
 .mini-card p,
@@ -131,8 +144,10 @@ h3 {
 .overview-actions .mini-log-caption {
   padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.66);
+  background: rgba(255, 255, 255, 0.82);
   border: 1px solid var(--line);
+  color: var(--muted-soft);
+  font-weight: 600;
 }
 
 .overlay-panel {
@@ -222,6 +237,17 @@ h3 {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(20, 38, 29, 0.1);
+}
+
+.section-heading > div:first-child {
+  min-width: 0;
+}
+
+.section-heading > div:first-child h2,
+.section-heading > div:first-child h3 {
+  max-width: 28ch;
 }
 
 .status-pill {
@@ -383,8 +409,9 @@ h3 {
 }
 
 .mini-log-caption {
-  color: var(--muted);
-  font-size: 0.92rem;
+  color: var(--muted-soft);
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .metrics-grid {
@@ -421,8 +448,11 @@ h3 {
 }
 
 .metric-label {
-  color: var(--muted);
-  font-size: 0.9rem;
+  color: var(--muted-soft);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .metric-value {
@@ -434,8 +464,9 @@ h3 {
 
 .metric-subtext {
   margin-top: 8px;
-  color: var(--muted);
-  font-size: 0.95rem;
+  color: var(--muted-soft);
+  font-size: 0.92rem;
+  line-height: 1.4;
 }
 
 .metric-tile-inline .metric-tile-body {
@@ -547,8 +578,11 @@ h3 {
 }
 
 .field span {
-  font-size: 0.92rem;
+  color: var(--muted-soft);
+  font-size: 0.84rem;
   font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .field input,
@@ -784,8 +818,8 @@ tbody tr:hover {
 
 .tax-summary-kicker {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.84rem;
+  color: var(--muted-soft);
+  font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -801,8 +835,8 @@ tbody tr:hover {
 
 .tax-summary-card-copy {
   margin-top: 10px;
-  color: var(--muted);
-  font-size: 0.95rem;
+  color: var(--muted-soft);
+  font-size: 0.92rem;
   line-height: 1.45;
 }
 
@@ -826,8 +860,9 @@ tbody tr:hover {
 
 .tax-expense-copy {
   margin-top: 6px;
-  color: var(--muted);
-  font-size: 0.94rem;
+  color: var(--muted-soft);
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .tax-expense-input-wrap {
@@ -992,15 +1027,17 @@ tbody tr:hover {
 
 .table-panel-title {
   font-family: "Space Grotesk", sans-serif;
-  font-size: 1rem;
+  font-size: 1.02rem;
   font-weight: 700;
   color: var(--ink);
+  letter-spacing: -0.01em;
 }
 
 .table-panel-copy {
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 0.94rem;
+  margin-top: 6px;
+  color: var(--muted-soft);
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .category-bar-list {
@@ -1126,7 +1163,8 @@ tbody tr:hover {
 .trendline-summary {
   margin: 0;
   max-width: 680px;
-  color: var(--muted);
+  color: var(--muted-soft);
+  line-height: 1.5;
 }
 
 .trendline-chart-wrap {
@@ -1158,6 +1196,7 @@ tbody tr:hover {
 .forecast-card-title {
   font-weight: 700;
   color: var(--ink);
+  letter-spacing: -0.01em;
   margin-bottom: 10px;
 }
 
