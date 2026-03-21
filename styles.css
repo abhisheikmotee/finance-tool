@@ -753,9 +753,12 @@ tbody tr:hover {
   gap: 18px;
 }
 
+.insights-card .table-wrap + .table-wrap {
+  margin-top: 28px;
+}
+
 .table-footer-action {
-  margin-top: -6px;
-  margin-bottom: 4px;
+  margin-top: 12px;
 }
 
 .table-footer-action .btn {
