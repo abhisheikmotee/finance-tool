@@ -112,7 +112,7 @@ h3 {
   display: grid;
   grid-template-columns: 1.8fr 0.9fr;
   gap: 18px;
-  padding: 16px 18px;
+  padding: 8px 18px 18px;
   margin-bottom: 22px;
   align-items: stretch;
 }
@@ -144,8 +144,13 @@ h3 {
   min-width: 0;
 }
 
-.section-heading.compact {
+.control-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -842,7 +847,7 @@ tbody tr:hover {
     align-items: stretch;
   }
 
-  .top-statuses,
+  .control-actions,
   .mini-log-head,
   .control-summary {
     align-items: flex-start;
