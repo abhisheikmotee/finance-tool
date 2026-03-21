@@ -5,9 +5,12 @@ const GBP_TO_MUR_RATE_KEY = "gbpToMurRate";
 const GBP_TO_MUR_API_URL = "https://open.er-api.com/v6/latest/GBP";
 const TAX_ENTRIES_KEY = "taxEntries";
 const TAX_EXPECTED_EXPENSES_KEY = "taxExpectedExpenses";
+const TAX_EXPECTED_EXPENSES_MODE_KEY = "taxExpectedExpensesMode";
 const TAX_YEAR_START = "2025-07-01";
 const TAX_YEAR_END = "2026-06-30";
 const DEFAULT_EXPECTED_EXPENSES = 2500000;
+const AUTO_TAX_EXPENSES_MODE = "auto";
+const MANUAL_TAX_EXPENSES_MODE = "manual";
 const FORECAST_SPEND_CATEGORIES = new Set([
   "Food Delivery",
   "Dining / Restaurants",
@@ -129,6 +132,7 @@ const state = {
   imports: [],
   taxEntries: [],
   taxExpectedExpenses: DEFAULT_EXPECTED_EXPENSES,
+  taxExpectedExpensesMode: AUTO_TAX_EXPENSES_MODE,
   currentPage: 1,
   pageSize: 10,
   ledgerHandle: null,
@@ -477,7 +481,11 @@ async function restoreTaxEntries() {
 
   try {
     const savedExpectedExpenses = await getSetting(TAX_EXPECTED_EXPENSES_KEY);
-    if (savedExpectedExpenses !== null && savedExpectedExpenses !== "") {
+    const savedExpectedExpensesMode = await getSetting(TAX_EXPECTED_EXPENSES_MODE_KEY);
+    state.taxExpectedExpensesMode = savedExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE
+      ? MANUAL_TAX_EXPENSES_MODE
+      : AUTO_TAX_EXPENSES_MODE;
+    if (state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE && savedExpectedExpenses !== null && savedExpectedExpenses !== "") {
       state.taxExpectedExpenses = Number(savedExpectedExpenses) || DEFAULT_EXPECTED_EXPENSES;
     }
   } catch (error) {
@@ -523,7 +531,8 @@ async function createNewLedger() {
   state.imports = [];
   state.filteredTransactions = [];
   state.taxEntries = cloneDefaultTaxEntries();
-  state.taxExpectedExpenses = DEFAULT_EXPECTED_EXPENSES;
+  state.taxExpectedExpensesMode = AUTO_TAX_EXPENSES_MODE;
+  state.taxExpectedExpenses = calculateSuggestedTaxExpectedExpenses(state.transactions);
   state.currentPage = 1;
   state.ledgerHandle = null;
   state.ledgerName = "finance-ledger.json";
@@ -577,7 +586,12 @@ async function loadLedgerFromHandle(handle, storeHandle = false) {
   state.transactions = normalizeTransactionRows(data.transactions || []);
   state.imports = (data.imports || []).sort((a, b) => a.importedAt.localeCompare(b.importedAt));
   state.taxEntries = Array.isArray(data.taxEntries) ? data.taxEntries.map(normalizeTaxEntry) : [];
-  state.taxExpectedExpenses = Number(data.taxExpectedExpenses) || DEFAULT_EXPECTED_EXPENSES;
+  state.taxExpectedExpensesMode = data.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE
+    ? MANUAL_TAX_EXPENSES_MODE
+    : AUTO_TAX_EXPENSES_MODE;
+  state.taxExpectedExpenses = state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE
+    ? (Number(data.taxExpectedExpenses) || DEFAULT_EXPECTED_EXPENSES)
+    : calculateSuggestedTaxExpectedExpenses(state.transactions);
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
   if (storeHandle) {
@@ -597,7 +611,12 @@ async function loadLedgerFromFile(file) {
   state.transactions = normalizeTransactionRows(data.transactions || []);
   state.imports = (data.imports || []).sort((a, b) => a.importedAt.localeCompare(b.importedAt));
   state.taxEntries = Array.isArray(data.taxEntries) ? data.taxEntries.map(normalizeTaxEntry) : [];
-  state.taxExpectedExpenses = Number(data.taxExpectedExpenses) || DEFAULT_EXPECTED_EXPENSES;
+  state.taxExpectedExpensesMode = data.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE
+    ? MANUAL_TAX_EXPENSES_MODE
+    : AUTO_TAX_EXPENSES_MODE;
+  state.taxExpectedExpenses = state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE
+    ? (Number(data.taxExpectedExpenses) || DEFAULT_EXPECTED_EXPENSES)
+    : calculateSuggestedTaxExpectedExpenses(state.transactions);
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
   updateLedgerStatus(`Opened ledger: ${state.ledgerName}. Save will download the updated file.`);
@@ -648,6 +667,7 @@ function buildLedgerSnapshot() {
     imports: state.imports,
     taxEntries: state.taxEntries,
     taxExpectedExpenses: state.taxExpectedExpenses,
+    taxExpectedExpensesMode: state.taxExpectedExpensesMode,
   };
 }
 
@@ -659,6 +679,7 @@ function emptyLedgerSnapshot() {
     imports: [],
     taxEntries: cloneDefaultTaxEntries(),
     taxExpectedExpenses: DEFAULT_EXPECTED_EXPENSES,
+    taxExpectedExpensesMode: AUTO_TAX_EXPENSES_MODE,
   };
 }
 
@@ -1061,6 +1082,7 @@ function closeImportPanel() {
 }
 
 function renderAll() {
+  refreshAutoTaxExpectedExpenses();
   renderLedgerStatus();
   renderFilterOptions();
   renderQuickFilterChips();
@@ -2251,7 +2273,8 @@ async function resetLedgerData() {
   state.filteredTransactions = [];
   state.sortedTransactions = [];
   state.taxEntries = [];
-  state.taxExpectedExpenses = DEFAULT_EXPECTED_EXPENSES;
+  state.taxExpectedExpensesMode = AUTO_TAX_EXPENSES_MODE;
+  state.taxExpectedExpenses = calculateSuggestedTaxExpectedExpenses(state.transactions);
   state.currentPage = 1;
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
@@ -2436,6 +2459,7 @@ function handleTaxSummaryInput(event) {
     return;
   }
 
+  state.taxExpectedExpensesMode = MANUAL_TAX_EXPENSES_MODE;
   state.taxExpectedExpenses = Number(target.value || 0);
   renderTaxSummary();
   persistTaxExpectedExpenses();
@@ -2513,14 +2537,7 @@ function computeTaxSummary() {
   const soFarCsg = entriesInWindow
     .filter((entry) => entry.csgPaymentReference.trim())
     .reduce((sum, entry) => sum + computeTaxEntry(entry).csgAmountPaidMur, 0);
-  const soFarExpenses = state.transactions
-    .filter((txn) =>
-      txn.txnDate >= TAX_YEAR_START &&
-      txn.txnDate <= getTodayDateString() &&
-      txn.currency === "MUR" &&
-      (txn.bankName === "MCB" || txn.bankName === "SBM")
-    )
-    .reduce((sum, txn) => sum + Number(txn.debit || 0), 0);
+  const soFarExpenses = getTaxYearExpensesSoFar(state.transactions);
   const expectedSaved = expectedIncome - expectedIncomeTax - expectedCsg - state.taxExpectedExpenses;
   const soFarSaved = soFarIncome - soFarIncomeTax - soFarCsg - soFarExpenses;
 
@@ -2535,6 +2552,73 @@ function computeTaxSummary() {
     expectedSaved,
     soFarSaved,
   };
+}
+
+function refreshAutoTaxExpectedExpenses() {
+  if (state.taxExpectedExpensesMode !== AUTO_TAX_EXPENSES_MODE) {
+    return;
+  }
+  state.taxExpectedExpenses = calculateSuggestedTaxExpectedExpenses(state.transactions);
+}
+
+function calculateSuggestedTaxExpectedExpenses(transactions) {
+  const today = getTodayDateString();
+  const soFarExpenses = getTaxYearExpensesSoFar(transactions, today);
+  const remainingMonths = getRemainingTaxYearMonths(today);
+  const estimatedMonthlyExpenses = estimateMonthlyExpenseRunRate(transactions, today);
+  const suggested = soFarExpenses + estimatedMonthlyExpenses * remainingMonths;
+  return Math.max(0, roundMur(suggested));
+}
+
+function getTaxYearExpensesSoFar(transactions, today = getTodayDateString()) {
+  return transactions
+    .filter((txn) =>
+      txn.txnDate >= TAX_YEAR_START
+      && txn.txnDate <= today
+      && txn.currency === "MUR"
+      && (txn.bankName === "MCB" || txn.bankName === "SBM")
+    )
+    .reduce((sum, txn) => sum + Number(txn.debit || 0), 0);
+}
+
+function getRemainingTaxYearMonths(today = getTodayDateString()) {
+  if (today >= TAX_YEAR_END) {
+    return 0;
+  }
+  const currentMonthStart = new Date(`${today.slice(0, 7)}-01T00:00:00`);
+  const taxYearEndMonthStart = new Date(`${TAX_YEAR_END.slice(0, 7)}-01T00:00:00`);
+  const monthDiff = (taxYearEndMonthStart.getFullYear() - currentMonthStart.getFullYear()) * 12
+    + (taxYearEndMonthStart.getMonth() - currentMonthStart.getMonth());
+  return Math.max(0, monthDiff);
+}
+
+function estimateMonthlyExpenseRunRate(transactions, today = getTodayDateString()) {
+  const currentMonthStart = `${today.slice(0, 7)}-01`;
+  const monthlyTotals = new Map();
+
+  transactions.forEach((txn) => {
+    if (txn.txnDate >= currentMonthStart) return;
+    if (txn.currency !== "MUR") return;
+    if (txn.bankName !== "MCB" && txn.bankName !== "SBM") return;
+    monthlyTotals.set(txn.txnDate.slice(0, 7), (monthlyTotals.get(txn.txnDate.slice(0, 7)) || 0) + Number(txn.debit || 0));
+  });
+
+  const historyMonthKeys = [];
+  const cursor = new Date(`${currentMonthStart}T00:00:00`);
+  cursor.setMonth(cursor.getMonth() - 1);
+  for (let index = 0; index < 12; index += 1) {
+    historyMonthKeys.unshift(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+    cursor.setMonth(cursor.getMonth() - 1);
+  }
+
+  const historyValues = historyMonthKeys
+    .map((monthKey) => monthlyTotals.get(monthKey) || 0)
+    .filter((value) => value > 0);
+  if (!historyValues.length) {
+    return DEFAULT_EXPECTED_EXPENSES / 12;
+  }
+
+  return average(historyValues);
 }
 
 function calculateIncomeTax(amount) {
@@ -2583,6 +2667,7 @@ async function persistTaxEntries() {
 async function persistTaxExpectedExpenses() {
   try {
     await setSetting(TAX_EXPECTED_EXPENSES_KEY, state.taxExpectedExpenses);
+    await setSetting(TAX_EXPECTED_EXPENSES_MODE_KEY, state.taxExpectedExpensesMode);
   } catch (error) {
     logMessage(`Could not save tax expected expenses: ${error.message}`);
   }
