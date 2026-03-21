@@ -1367,7 +1367,6 @@ function renderTrendInsights() {
   const monthlyMap = new Map();
   const categoryMap = new Map();
   const forecastMap = new Map();
-  const conversionNote = buildInsightConversionNote(filtered);
 
   filtered.forEach((txn) => {
     const month = txn.txnDate.slice(0, 7);
@@ -1441,22 +1440,22 @@ function renderTrendInsights() {
     {
       label: "Average Monthly Debit",
       value: moneyFormat(avgMonthlyDebit),
-      subtext: conversionNote || "Average outgoing total across visible months",
+      subtext: "Average outgoing total across visible months",
     },
     {
       label: "Average Monthly Credit",
       value: moneyFormat(avgMonthlyCredit),
-      subtext: conversionNote || "Average incoming total across visible months",
+      subtext: "Average incoming total across visible months",
     },
     {
       label: "Average Monthly Net Flow",
       value: moneyFormat(avgMonthlyNet),
-      subtext: conversionNote || "Average credit minus debit across visible months",
+      subtext: "Average credit minus debit across visible months",
     },
     {
       label: "Largest Debit Seen",
       value: moneyFormat(biggestDebit),
-      subtext: conversionNote || "Highest single outgoing transaction in current view",
+      subtext: "Highest single outgoing transaction in current view",
     },
   ];
 
