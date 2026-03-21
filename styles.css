@@ -1343,55 +1343,32 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 
-  .tax-table,
   .tax-comparison-table,
   .table-wrap table {
     table-layout: auto;
   }
 
-  .tax-table thead {
-    display: none;
+  .tax-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .tax-table tbody,
-  .tax-table tr,
+  .tax-table {
+    min-width: 1180px;
+    table-layout: auto;
+  }
+
+  .tax-table th,
   .tax-table td {
-    display: block;
-    width: 100%;
-  }
-
-  .tax-table tr {
-    padding: 10px;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .tax-table td {
-    padding: 8px 0;
-    border-bottom: 0;
-  }
-
-  .tax-table td::before {
-    content: attr(data-label);
-    display: block;
-    margin-bottom: 6px;
-    color: var(--muted);
-    font-size: 0.76rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    white-space: nowrap;
   }
 
   .tax-table .tax-input,
   .tax-table .tax-readonly {
-    min-height: 46px;
-    font-size: 1rem;
+    min-width: 130px;
   }
 
-  .tax-table .tax-input[type="date"] {
-    padding-right: 44px;
-  }
-
-  .tax-action-btn {
-    min-width: 100%;
+  .tax-table td[data-label="CSG Payment Reference"] .tax-input {
+    min-width: 250px;
   }
 }
