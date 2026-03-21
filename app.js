@@ -1341,15 +1341,24 @@ function renderMonthlySummary() {
     return;
   }
 
-  els.monthlySummaryBody.innerHTML = monthlyRows.map((row) => `
-    <tr>
+  let previousMonth = "";
+  let monthBandIndex = -1;
+  els.monthlySummaryBody.innerHTML = monthlyRows.map((row) => {
+    if (row.month !== previousMonth) {
+      monthBandIndex += 1;
+      previousMonth = row.month;
+    }
+    const monthBandClass = monthBandIndex % 2 === 0 ? "month-band-even" : "month-band-odd";
+    return `
+    <tr class="${monthBandClass}">
       <td>${escapeHtml(row.month)}</td>
       <td>${escapeHtml(row.accountLabel)}</td>
       <td class="amount-negative">${moneyFormat(row.totalDebit)}</td>
       <td class="amount-positive">${moneyFormat(row.totalCredit)}</td>
       <td class="${row.totalCredit - row.totalDebit >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(row.totalCredit - row.totalDebit)}</td>
     </tr>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function renderTrendInsights() {
