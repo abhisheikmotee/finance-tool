@@ -1452,6 +1452,31 @@ tbody tr:hover {
     table-layout: auto;
   }
 
+  .table-card .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-card table {
+    min-width: 760px;
+  }
+
+  .table-card th,
+  .table-card td {
+    white-space: nowrap;
+  }
+
+  .table-card th:nth-child(2),
+  .table-card td:nth-child(2) {
+    min-width: 170px;
+  }
+
+  .table-card th:nth-child(3),
+  .table-card td:nth-child(3) {
+    min-width: 240px;
+    white-space: normal;
+  }
+
   .tax-table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
