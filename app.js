@@ -331,7 +331,7 @@ function handleQuickFilterChipClick(event) {
   if (!button) return;
 
   const { chip } = button.dataset;
-  if (chip === "this-month" || chip === "last-3-months" || chip === "this-year" || chip === "last-year") {
+  if (chip === "this-month" || chip === "last-3-months" || chip === "this-year" || chip === "last-year" || chip === "current-tax-year") {
     state.quickFilters.datePreset = state.quickFilters.datePreset === chip ? "all" : chip;
   } else if (chip === "salary-only") {
     state.quickFilters.salaryOnly = !state.quickFilters.salaryOnly;
@@ -1101,6 +1101,7 @@ function renderQuickFilterChips() {
     "this-month": !usingManualDates && state.quickFilters.datePreset === "this-month",
     "last-3-months": !usingManualDates && state.quickFilters.datePreset === "last-3-months",
     "this-year": !usingManualDates && state.quickFilters.datePreset === "this-year",
+    "current-tax-year": !usingManualDates && state.quickFilters.datePreset === "current-tax-year",
     "last-year": !usingManualDates && state.quickFilters.datePreset === "last-year",
     "salary-only": state.quickFilters.salaryOnly,
     "transfers-excluded": state.quickFilters.excludeTransfers,
@@ -1301,8 +1302,10 @@ function renderTransactionsTable(options = {}) {
   const start = (state.currentPage - 1) * state.pageSize;
   const end = start + state.pageSize;
   const pageRows = state.sortedTransactions.slice(start, end);
+  const totalLedgerRows = state.transactions.length;
 
-  els.tableCount.textContent = `${numberFormat(totalRows)} row${totalRows === 1 ? "" : "s"}`;
+  els.tableCount.textContent = `Showing ${numberFormat(pageRows.length)} of ${numberFormat(totalRows)} row${totalRows === 1 ? "" : "s"}`;
+  els.tableCount.title = `${numberFormat(totalRows)} filtered row${totalRows === 1 ? "" : "s"} from ${numberFormat(totalLedgerRows)} total ledger row${totalLedgerRows === 1 ? "" : "s"}`;
   els.pageIndicator.textContent = `Page ${state.currentPage} of ${totalPages}`;
   els.prevPage.disabled = state.currentPage === 1;
   els.nextPage.disabled = state.currentPage === totalPages;
@@ -1311,7 +1314,7 @@ function renderTransactionsTable(options = {}) {
   renderTableSortState();
 
   if (!pageRows.length) {
-    els.transactionsBody.innerHTML = `<tr><td colspan="6" class="empty-state">No transactions match the current filters.</td></tr>`;
+    els.transactionsBody.innerHTML = `<tr><td colspan="6" class="empty-state">No transactions match the current filters. Try widening the date range or clearing bank and salary filters.</td></tr>`;
     restorePaginationPosition(previousPaginationTop);
     return;
   }
@@ -1319,7 +1322,7 @@ function renderTransactionsTable(options = {}) {
   els.transactionsBody.innerHTML = pageRows.map((txn) => `
     <tr>
       <td>${escapeHtml(txn.txnDate)}</td>
-      <td>${escapeHtml(txn.accountLabel)}</td>
+      <td>${renderAccountBadge(txn.accountLabel)}</td>
       <td>${escapeHtml(txn.description)}</td>
       <td class="${txn.debit > 0 ? "amount-negative" : ""}">${moneyFormat(txn.debit)}</td>
       <td class="${txn.credit > 0 ? "amount-positive" : ""}">${moneyFormat(txn.credit)}</td>
@@ -1482,7 +1485,7 @@ function renderMonthlySummary() {
   `).join("");
 
   if (!monthlyRows.length) {
-    els.monthlySummaryBody.innerHTML = `<tr><td colspan="5" class="empty-state">No monthly insights for the current filters.</td></tr>`;
+    els.monthlySummaryBody.innerHTML = `<tr><td colspan="5" class="empty-state">No monthly insights for the current filters. Try widening the date range or clearing bank filters.</td></tr>`;
     return;
   }
 
@@ -1497,7 +1500,7 @@ function renderMonthlySummary() {
     return `
     <tr class="${monthBandClass}">
       <td>${escapeHtml(row.month)}</td>
-      <td>${escapeHtml(row.accountLabel)}</td>
+      <td>${renderAccountBadge(row.accountLabel)}</td>
       <td class="amount-negative">${moneyFormat(row.totalDebit)}</td>
       <td class="amount-positive">${moneyFormat(row.totalCredit)}</td>
       <td class="${row.totalCredit - row.totalDebit >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(row.totalCredit - row.totalDebit)}</td>
@@ -1576,17 +1579,20 @@ function renderTrendInsights() {
       label: "Projected Year-End Balance",
       value: moneyFormat(projectedClosing),
       subtext: `Expected total balance by Dec ${planningYear}`,
+      tooltip: `All tracked accounts combined. Based on current balances, confirmed Tax Tracker items, and estimated non-tax spend through Dec ${planningYear}.`,
     },
     {
       label: "Forecast Change",
       value: moneyFormat(projectedClosing - totalCurrentBalance),
       subtext: "Projected movement from today to year end",
+      tooltip: "Projected year-end balance minus current all-account balance.",
       toneClass: projectedClosing - totalCurrentBalance >= 0 ? "is-positive" : "is-negative",
     },
     {
       label: "Confirmed Future Income",
       value: moneyFormat(forecastPlan.projectedIncomeTotal),
       subtext: "Scheduled Tax Tracker receipts not yet received",
+      tooltip: `Confirmed future Tax Tracker income for ${planningYear} only, based on pending receipt dates after the latest imported transaction date.`,
       toneClass: "is-positive",
     },
     {
@@ -1594,12 +1600,13 @@ function renderTrendInsights() {
       value: moneyFormat(knownFutureOutflows),
       subtext: "Planned income tax and Tax Tracker CSG still ahead",
       detail: `+ ${moneyFormat(forecastPlan.projectedRecurringSpendTotal)} estimated non-tax spend`,
+      tooltip: `Known outflows include ${moneyFormat(forecastPlan.projectedIncomeTaxTotal)} income tax and ${moneyFormat(forecastPlan.projectedCsgTotal)} Tax Tracker CSG for ${planningYear}. Estimated non-tax spend is shown separately below.`,
       toneClass: "is-negative",
     },
   ];
 
   els.trendMetricsGrid.innerHTML = trendTiles.map((metric) => `
-    <article class="metric-tile ${metric.toneClass || ""}">
+    <article class="metric-tile ${metric.toneClass || ""}" ${metric.tooltip ? `title="${escapeHtml(metric.tooltip)}"` : ""}>
       <div class="metric-label">${escapeHtml(metric.label)}</div>
       <div class="metric-value">${escapeHtml(metric.value)}</div>
       <div class="metric-subtext">${escapeHtml(metric.subtext)}</div>
@@ -1615,7 +1622,7 @@ function renderTrendInsights() {
 
   els.forecastSummaryCards.innerHTML = forecastRows.length ? forecastRows.map((row) => `
     <article class="forecast-card">
-      <div class="forecast-card-title">${escapeHtml(row.accountLabel)}</div>
+      <div class="forecast-card-title">${renderAccountBadge(row.accountLabel)}</div>
       <div class="forecast-card-grid">
         <div>
           <div class="forecast-card-label">Last balance</div>
@@ -1636,7 +1643,7 @@ function renderTrendInsights() {
 
 function renderCategoryBars(rows) {
   if (!rows.length) {
-    els.categoryBarList.innerHTML = `<div class="empty-state">No visible spend categories to compare.</div>`;
+    els.categoryBarList.innerHTML = `<div class="empty-state">No visible spend categories to compare. Try widening the date range or clearing bank filters.</div>`;
     return;
   }
 
@@ -1783,6 +1790,9 @@ function renderTrendlineChart(projection) {
     .join(" ");
   const zeroY = yForValue(0);
   const gridValues = [minY, (minY + maxY) / 2, maxY];
+  const todayMonthNumber = projection.year === getPlanningYear() ? Number(getTodayDateString().slice(5, 7)) : 0;
+  const hasTodayMarker = todayMonthNumber >= 1 && todayMonthNumber <= allPoints.length;
+  const todayMarkerX = hasTodayMarker ? xForIndex(todayMonthNumber - 1) : 0;
 
   els.trendlineChart.innerHTML = `
     ${gridValues.map((value) => `
@@ -1792,6 +1802,10 @@ function renderTrendlineChart(projection) {
       </g>
     `).join("")}
     <line class="trend-axis" x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}"></line>
+    ${hasTodayMarker ? `
+      <line class="trend-today-marker" x1="${todayMarkerX}" y1="${pad.top}" x2="${todayMarkerX}" y2="${height - pad.bottom}"></line>
+      <text class="trend-today-label" x="${todayMarkerX}" y="${pad.top - 6}" text-anchor="middle">Today</text>
+    ` : ""}
     ${actualPath ? `<path class="trend-actual" d="${actualPath}"></path>` : ""}
     ${projection.projectionSeries.length ? `<path class="trend-projection" d="${projectionPath}"></path>` : ""}
     ${allPoints.map((point, index) => `
@@ -2311,6 +2325,7 @@ function renderTaxTable() {
 
 function renderTaxSummary() {
   const summary = computeTaxSummary();
+  const expenseTargetModeLabel = state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE ? "Manual" : "Auto";
   const comparisons = [
     {
       label: "Income",
@@ -2361,8 +2376,12 @@ function renderTaxSummary() {
     </div>
     <section class="tax-expense-editor">
       <div>
-        <div class="tax-expense-title">Expected Expenses</div>
+        <div class="tax-expense-heading">
+          <div class="tax-expense-title">Expected Expenses</div>
+          <span class="mode-badge ${state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE ? "manual" : "auto"}">${escapeHtml(expenseTargetModeLabel)}</span>
+        </div>
         <div class="tax-expense-copy">Set the full-year expense target here. The comparison below shows whether current spend is still within plan.</div>
+        <div class="tax-expense-note">Auto uses expenses so far from Jul 2025 to Jun 2026 plus estimated remaining months from ledger history. Manual keeps your typed target.</div>
       </div>
       <div class="tax-expense-input-wrap">
         <label for="tax-expected-expenses-input">Expense Target</label>
@@ -2915,6 +2934,12 @@ function getEffectiveDateRange() {
       toDate: formatDateInputValue(today),
     };
   }
+  if (preset === "current-tax-year") {
+    return {
+      fromDate: TAX_YEAR_START,
+      toDate: TAX_YEAR_END,
+    };
+  }
   if (preset === "last-year") {
     return {
       fromDate: formatDateInputValue(new Date(today.getFullYear() - 1, 0, 1)),
@@ -2930,6 +2955,21 @@ function formatDateInputValue(date) {
     String(date.getMonth() + 1).padStart(2, "0"),
     String(date.getDate()).padStart(2, "0"),
   ].join("-");
+}
+
+function renderAccountBadge(accountLabel) {
+  const match = String(accountLabel || "").match(/^([A-Z]+)\s+(.+)\s+\(([^)]+)\)$/);
+  if (!match) {
+    return escapeHtml(accountLabel || "");
+  }
+  const [, bankName, accountNumber, currency] = match;
+  return `
+    <span class="account-badge">
+      <span class="account-bank account-bank-${escapeHtml(bankName.toLowerCase())}">${escapeHtml(bankName)}</span>
+      <span class="account-number">${escapeHtml(accountNumber)}</span>
+      <span class="currency-badge currency-${escapeHtml(currency.toLowerCase())}">${escapeHtml(currency)}</span>
+    </span>
+  `;
 }
 
 function csvEscape(value) {
