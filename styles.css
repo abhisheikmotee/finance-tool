@@ -755,6 +755,7 @@ tbody tr:hover {
 
 .insights-card .table-wrap + .table-wrap {
   margin-top: 28px;
+  padding-top: 10px;
 }
 
 .table-footer-action {
