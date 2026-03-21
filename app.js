@@ -8,6 +8,13 @@ const TAX_EXPECTED_EXPENSES_KEY = "taxExpectedExpenses";
 const TAX_YEAR_START = "2025-07-01";
 const TAX_YEAR_END = "2026-06-30";
 const DEFAULT_EXPECTED_EXPENSES = 2500000;
+const FORECAST_SPEND_CATEGORIES = new Set([
+  "Food Delivery",
+  "Dining / Restaurants",
+  "Shopping",
+  "Insurance",
+  "Transfers",
+]);
 const DEFAULT_TAX_ENTRIES = [
   {
     invoicedDate: "2025-06-30",
@@ -1289,6 +1296,8 @@ function renderTrendInsights() {
 
     const forecastEntry = forecastMap.get(txn.accountLabel) || {
       accountLabel: txn.accountLabel,
+      bankName: txn.bankName,
+      currency: txn.currency,
       lastBalance: 0,
       lastDate: "",
       net30: 0,
@@ -1325,10 +1334,16 @@ function renderTrendInsights() {
   const avgMonthlyNet = netSeries.length ? netSeries.reduce((sum, v) => sum + v, 0) / netSeries.length : 0;
   const biggestDebit = debits.length ? Math.max(...debits.map((txn) => toInsightAmount(txn.debit, txn.currency))) : 0;
   const projectionYear = detectProjectionYear(filtered);
-  const forecastRows = Array.from(forecastMap.values())
+  const baseForecastRows = Array.from(forecastMap.values())
     .sort((a, b) => a.accountLabel.localeCompare(b.accountLabel))
-    .map((row) => {
-      const endOfYear = projectAccountYearEnd(row, filtered, projectionYear);
+    .map((row) => ({
+      ...row,
+      endOfYear: row.lastBalance,
+    }));
+  const forecastPlan = buildForecastPlan(filtered, baseForecastRows, projectionYear);
+  const forecastRows = baseForecastRows.map((row) => {
+      const endOfYear = forecastPlan.accountEndBalances.get(row.accountLabel)
+        ?? projectAccountYearEnd(row, filtered, projectionYear);
       return {
         ...row,
         endOfYear,
@@ -1338,7 +1353,7 @@ function renderTrendInsights() {
   const projectedClosing = forecastRows.length
     ? forecastRows.reduce((sum, row) => sum + row.endOfYear, 0)
     : totalCurrentBalance;
-  const yearlyProjection = buildYearlyProjection(filtered, totalCurrentBalance, projectedClosing);
+  const yearlyProjection = buildYearlyProjection(filtered, totalCurrentBalance, projectedClosing, forecastPlan);
 
   const trendTiles = [
     {
@@ -1400,13 +1415,13 @@ function renderTrendInsights() {
   `).join("") : `<tr><td colspan="4" class="empty-state">No forecast rows for the current filters.</td></tr>`;
 }
 
-function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedClosingBalance = 0) {
+function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedClosingBalance = 0, forecastPlan = null) {
   const targetYear = detectProjectionYear(transactions);
   const yearTransactions = transactions.filter((txn) => txn.txnDate.startsWith(`${targetYear}-`));
   const latestDate = yearTransactions.length ? yearTransactions[yearTransactions.length - 1].txnDate : "";
   const lastMonthIndex = latestDate ? Number(latestDate.slice(5, 7)) : 0;
+  const todayMonthIndex = Number(getTodayDateString().slice(5, 7));
   const monthsElapsed = Math.max(lastMonthIndex, 0);
-  const monthsRemaining = Math.max(0, 12 - monthsElapsed);
   const monthlyTotals = new Map();
   const activeMonths = new Set();
 
@@ -1419,15 +1434,22 @@ function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedC
   });
 
   const actualNetSeries = buildMonthlySeries(targetYear, monthsElapsed, monthlyTotals);
-  const projectedNetValues = projectFutureMonthlyValues(actualNetSeries, monthsElapsed, monthsRemaining);
   const actualNetTotal = actualNetSeries.reduce((sum, point) => sum + point.y, 0);
-  const projectedNetTotal = projectedNetValues.reduce((sum, value) => sum + value, 0);
+  const futureMonthlyNetMap = forecastPlan?.futureMonthlyNetMap || new Map();
+  const effectiveMonthIndex = actualNetSeries.length ? monthsElapsed : todayMonthIndex;
+  const monthsRemaining = Math.max(0, 12 - effectiveMonthIndex);
+  const fallbackProjectedNetValues = actualNetSeries.length
+    ? projectFutureMonthlyValues(actualNetSeries, monthsElapsed, monthsRemaining)
+    : Array.from({ length: monthsRemaining }, () => 0);
+  const projectedNetValues = Array.from({ length: monthsRemaining }, (_, index) => {
+    const monthNumber = effectiveMonthIndex + index + 1;
+    const monthKey = `${targetYear}-${String(monthNumber).padStart(2, "0")}`;
+    if (futureMonthlyNetMap.has(monthKey)) {
+      return futureMonthlyNetMap.get(monthKey) || 0;
+    }
+    return fallbackProjectedNetValues[index] || 0;
+  });
   const impliedStartingBalance = totalCurrentBalance - actualNetTotal;
-  const desiredProjectedNet = projectedClosingBalance - totalCurrentBalance;
-  const scalingFactor = projectedNetTotal && Number.isFinite(desiredProjectedNet)
-    ? desiredProjectedNet / projectedNetTotal
-    : 1;
-  const scaledProjectedNetValues = projectedNetValues.map((value) => value * scalingFactor);
   let runningBalance = impliedStartingBalance;
   const actualSeries = actualNetSeries.map((point) => {
     runningBalance += point.y;
@@ -1439,9 +1461,9 @@ function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedC
 
   const projectionSeries = [];
   for (let i = 1; i <= monthsRemaining; i += 1) {
-    const absoluteMonthIndex = monthsElapsed + i;
+    const absoluteMonthIndex = effectiveMonthIndex + i;
     const month = `${targetYear}-${String(absoluteMonthIndex).padStart(2, "0")}`;
-    runningBalance += scaledProjectedNetValues[i - 1] ?? 0;
+    runningBalance += projectedNetValues[i - 1] ?? 0;
     projectionSeries.push({
       label: formatMonthShort(month),
       month,
@@ -1452,6 +1474,20 @@ function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedC
     });
   }
 
+  if (!actualSeries.length && Number.isFinite(totalCurrentBalance)) {
+    const anchorMonthNumber = Math.max(1, Math.min(12, effectiveMonthIndex));
+    const anchorMonth = `${targetYear}-${String(anchorMonthNumber).padStart(2, "0")}`;
+    actualSeries.push({
+      label: formatMonthShort(anchorMonth),
+      month: anchorMonth,
+      x: anchorMonthNumber,
+      monthNumber: anchorMonthNumber,
+      y: totalCurrentBalance,
+      forecast: false,
+    });
+    runningBalance = totalCurrentBalance;
+  }
+
   const visibleMonths = actualSeries.length;
   const summarySubtext = visibleMonths
     ? `Balance path from Jan to ${formatMonthShort(`${targetYear}-${String(monthsElapsed || 1).padStart(2, "0")}`)} ${targetYear}, including quiet months as zero`
@@ -1459,9 +1495,11 @@ function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedC
   const balanceSubtext = yearTransactions.length
     ? `Projected total balance across visible accounts through Dec ${targetYear}`
     : "Import current-year statements to estimate a closing balance";
-  const summaryText = visibleMonths
-    ? `Trendline shows expected balance growth toward ${moneyFormat(projectedClosingBalance)} by Dec ${targetYear}.${activeMonths.size < 4 ? " Low confidence: fewer than 4 active months are visible, so this uses an average-month fallback." : ""}`
-    : `Import transactions dated in ${targetYear} to generate the balance-growth forecast.`;
+  const summaryText = forecastPlan
+    ? `Trendline blends confirmed Tax Tracker income and tax outflows with trailing-average day-to-day spending to target ${moneyFormat(projectedClosingBalance)} by Dec ${targetYear}.`
+    : visibleMonths
+      ? `Trendline shows expected balance growth toward ${moneyFormat(projectedClosingBalance)} by Dec ${targetYear}.${activeMonths.size < 4 ? " Low confidence: fewer than 4 active months are visible, so this uses an average-month fallback." : ""}`
+      : `Import transactions dated in ${targetYear} to generate the balance-growth forecast.`;
 
   return {
     year: targetYear,
@@ -1533,10 +1571,11 @@ function renderTrendlineChart(projection) {
 }
 
 function detectProjectionYear(transactions) {
+  const currentYear = new Date().getFullYear();
   if (!transactions.length) {
-    return new Date().getFullYear();
+    return currentYear;
   }
-  return Number(transactions[transactions.length - 1].txnDate.slice(0, 4));
+  return Math.max(currentYear, Number(transactions[transactions.length - 1].txnDate.slice(0, 4)));
 }
 
 function linearRegression(values) {
@@ -1606,6 +1645,191 @@ function projectAccountYearEnd(accountForecast, transactions, targetYear) {
     .reduce((sum, value) => sum + value, 0);
 
   return accountForecast.lastBalance + projectedNet;
+}
+
+function buildForecastPlan(transactions, forecastRows, targetYear) {
+  if (!forecastRows.length) {
+    return {
+      futureMonthlyNetMap: new Map(),
+      accountEndBalances: new Map(),
+    };
+  }
+
+  const yearTransactions = transactions.filter((txn) => txn.txnDate.startsWith(`${targetYear}-`));
+  const latestYearDate = yearTransactions.length ? yearTransactions[yearTransactions.length - 1].txnDate : "";
+  const currentMonth = Number(getTodayDateString().slice(5, 7));
+  const forecastStartMonth = latestYearDate ? Number(latestYearDate.slice(5, 7)) + 1 : currentMonth + 1;
+  const futureMonthlyNetMap = new Map();
+  const accountEndBalances = new Map(forecastRows.map((row) => [row.accountLabel, row.lastBalance]));
+  const recurringMonthlySpend = estimateRecurringMonthlySpend(transactions);
+  const spendShares = estimateSpendingAccountShares(transactions, forecastRows);
+  const incomeAccountLabel = pickForecastAccount(forecastRows, (row) => row.bankName === "MCB" && row.currency === "GBP");
+  const sbmMurAccountLabel = pickForecastAccount(forecastRows, (row) => row.bankName === "SBM" && row.currency === "MUR");
+  const mcbMurAccountLabel = pickForecastAccount(forecastRows, (row) => row.bankName === "MCB" && row.currency === "MUR");
+  const taxSummary = computeTaxSummary();
+
+  for (let monthNumber = forecastStartMonth; monthNumber <= 12; monthNumber += 1) {
+    const monthKey = `${targetYear}-${String(monthNumber).padStart(2, "0")}`;
+    futureMonthlyNetMap.set(monthKey, -(recurringMonthlySpend || 0));
+  }
+
+  const recurringTotalsByAccount = allocateRecurringSpend(recurringMonthlySpend, spendShares, mcbMurAccountLabel, sbmMurAccountLabel, forecastStartMonth);
+  recurringTotalsByAccount.forEach((value, accountLabel) => {
+    accountEndBalances.set(accountLabel, (accountEndBalances.get(accountLabel) || 0) - value);
+  });
+
+  state.taxEntries.forEach((entry) => {
+    const computed = computeTaxEntry(entry);
+    const incomeDate = getEffectiveTaxReceiptDate(entry);
+    if (incomeDate && incomeDate > latestYearDate && incomeDate.startsWith(`${targetYear}-`)) {
+      const monthKey = incomeDate.slice(0, 7);
+      futureMonthlyNetMap.set(monthKey, (futureMonthlyNetMap.get(monthKey) || 0) + computed.amountReceivedMur);
+      if (incomeAccountLabel) {
+        accountEndBalances.set(incomeAccountLabel, (accountEndBalances.get(incomeAccountLabel) || 0) + computed.amountReceivedMur);
+      }
+    }
+
+    const csgDate = getEffectiveTaxCsgDate(entry);
+    if (csgDate && csgDate > latestYearDate && csgDate.startsWith(`${targetYear}-`)) {
+      const monthKey = csgDate.slice(0, 7);
+      futureMonthlyNetMap.set(monthKey, (futureMonthlyNetMap.get(monthKey) || 0) - computed.csgAmountPaidMur);
+      if (sbmMurAccountLabel) {
+        accountEndBalances.set(sbmMurAccountLabel, (accountEndBalances.get(sbmMurAccountLabel) || 0) - computed.csgAmountPaidMur);
+      }
+    }
+  });
+
+  const incomeTaxPaymentDate = `${targetYear}-09-30`;
+  if (
+    incomeAccountLabel &&
+    Number(TAX_YEAR_END.slice(0, 4)) === targetYear &&
+    incomeTaxPaymentDate > latestYearDate
+  ) {
+    futureMonthlyNetMap.set("".concat(targetYear, "-09"), (futureMonthlyNetMap.get(`${targetYear}-09`) || 0) - taxSummary.expectedIncomeTax);
+    accountEndBalances.set(incomeAccountLabel, (accountEndBalances.get(incomeAccountLabel) || 0) - taxSummary.expectedIncomeTax);
+  }
+
+  if (incomeAccountLabel) {
+    const totalFundingNeeded = Array.from(recurringTotalsByAccount.values()).reduce((sum, value) => sum + value, 0)
+      + estimateFutureCsgTotal(targetYear, latestYearDate);
+    accountEndBalances.set(incomeAccountLabel, (accountEndBalances.get(incomeAccountLabel) || 0) - totalFundingNeeded);
+    if (mcbMurAccountLabel) {
+      accountEndBalances.set(mcbMurAccountLabel, (accountEndBalances.get(mcbMurAccountLabel) || 0) + (recurringTotalsByAccount.get(mcbMurAccountLabel) || 0));
+    }
+    if (sbmMurAccountLabel) {
+      accountEndBalances.set(
+        sbmMurAccountLabel,
+        (accountEndBalances.get(sbmMurAccountLabel) || 0)
+          + (recurringTotalsByAccount.get(sbmMurAccountLabel) || 0)
+          + estimateFutureCsgTotal(targetYear, latestYearDate)
+      );
+    }
+  }
+
+  return {
+    futureMonthlyNetMap,
+    accountEndBalances,
+  };
+}
+
+function estimateRecurringMonthlySpend(transactions) {
+  if (!transactions.length) return 0;
+  const latestDate = transactions[transactions.length - 1].txnDate;
+  const monthTotals = new Map();
+
+  transactions.forEach((txn) => {
+    if (toInsightAmount(txn.debit, txn.currency) <= 0) return;
+    const category = categorizeTransaction(txn);
+    if (!FORECAST_SPEND_CATEGORIES.has(category)) return;
+    const monthKey = txn.txnDate.slice(0, 7);
+    monthTotals.set(monthKey, (monthTotals.get(monthKey) || 0) + toInsightAmount(txn.debit, txn.currency));
+  });
+
+  const recentMonths = [];
+  let cursor = new Date(`${latestDate.slice(0, 7)}-01T00:00:00`);
+  for (let i = 0; i < 12; i += 1) {
+    recentMonths.unshift(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+    cursor.setMonth(cursor.getMonth() - 1);
+  }
+
+  return average(recentMonths.map((monthKey) => monthTotals.get(monthKey) || 0));
+}
+
+function estimateSpendingAccountShares(transactions, forecastRows) {
+  const spendByAccount = new Map();
+  const spendAccounts = forecastRows.filter((row) => row.currency === "MUR" && (row.bankName === "MCB" || row.bankName === "SBM"));
+
+  transactions.forEach((txn) => {
+    if (toInsightAmount(txn.debit, txn.currency) <= 0) return;
+    const category = categorizeTransaction(txn);
+    if (!FORECAST_SPEND_CATEGORIES.has(category)) return;
+    if (!spendAccounts.some((row) => row.accountLabel === txn.accountLabel)) return;
+    spendByAccount.set(txn.accountLabel, (spendByAccount.get(txn.accountLabel) || 0) + Number(txn.debit || 0));
+  });
+
+  const total = Array.from(spendByAccount.values()).reduce((sum, value) => sum + value, 0);
+  if (!total) {
+    const fallback = new Map();
+    if (spendAccounts.length === 1) {
+      fallback.set(spendAccounts[0].accountLabel, 1);
+      return fallback;
+    }
+    spendAccounts.forEach((row) => fallback.set(row.accountLabel, 1 / Math.max(1, spendAccounts.length)));
+    return fallback;
+  }
+
+  const shares = new Map();
+  spendByAccount.forEach((value, accountLabel) => {
+    shares.set(accountLabel, value / total);
+  });
+  return shares;
+}
+
+function allocateRecurringSpend(monthlySpend, spendShares, mcbMurAccountLabel, sbmMurAccountLabel, forecastStartMonth) {
+  const totals = new Map();
+  const monthsRemaining = Math.max(0, 13 - forecastStartMonth);
+  const totalSpend = monthlySpend * monthsRemaining;
+
+  spendShares.forEach((share, accountLabel) => {
+    totals.set(accountLabel, totalSpend * share);
+  });
+
+  if (!totals.size && totalSpend > 0) {
+    const fallbackAccount = sbmMurAccountLabel || mcbMurAccountLabel;
+    if (fallbackAccount) {
+      totals.set(fallbackAccount, totalSpend);
+    }
+  }
+
+  return totals;
+}
+
+function pickForecastAccount(forecastRows, predicate) {
+  const match = forecastRows.find(predicate);
+  return match ? match.accountLabel : "";
+}
+
+function getEffectiveTaxCsgDate(entry) {
+  if (entry.dateCsgPaid) {
+    return entry.dateCsgPaid;
+  }
+  const baseDate = getEffectiveTaxReceiptDate(entry);
+  if (!baseDate) {
+    return "";
+  }
+  const nextMonth = new Date(`${baseDate}T00:00:00`);
+  nextMonth.setMonth(nextMonth.getMonth() + 1);
+  return nextMonth.toISOString().slice(0, 10);
+}
+
+function estimateFutureCsgTotal(targetYear, latestYearDate) {
+  return state.taxEntries.reduce((sum, entry) => {
+    const csgDate = getEffectiveTaxCsgDate(entry);
+    if (!csgDate || !csgDate.startsWith(`${targetYear}-`) || csgDate <= latestYearDate) {
+      return sum;
+    }
+    return sum + computeTaxEntry(entry).csgAmountPaidMur;
+  }, 0);
 }
 
 function buildMonthlySeries(year, lastMonthNumber, totalsMap, clampOutliers = false) {
