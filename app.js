@@ -2279,36 +2279,110 @@ function renderTaxTable() {
 
 function renderTaxSummary() {
   const summary = computeTaxSummary();
+  const comparisons = [
+    {
+      label: "Income",
+      expected: summary.expectedIncome,
+      current: summary.soFarIncome,
+      progressLabel: "received",
+    },
+    {
+      label: "Income Tax",
+      expected: summary.expectedIncomeTax,
+      current: summary.soFarIncomeTax,
+      progressLabel: "accrued",
+    },
+    {
+      label: "CSG",
+      expected: summary.expectedCsg,
+      current: summary.soFarCsg,
+      progressLabel: "paid",
+    },
+    {
+      label: "Expenses",
+      expected: state.taxExpectedExpenses,
+      current: summary.soFarExpenses,
+      progressLabel: "spent",
+      inverseTone: true,
+    },
+    {
+      label: "Saved",
+      expected: summary.expectedSaved,
+      current: summary.soFarSaved,
+      progressLabel: "retained",
+      emphasize: true,
+    },
+  ];
+
   els.taxSummaryBody.innerHTML = `
-    <tr>
-      <td>Expected Income Year Jul 2025-Jun 2026</td>
-      <td class="tax-summary-value">${moneyFormat(summary.expectedIncome)}</td>
-      <td>So far Income Year Jul 2025-Jun 2026</td>
-      <td class="tax-summary-value">${moneyFormat(summary.soFarIncome)}</td>
-    </tr>
-    <tr>
-      <td>Expected Income Tax</td>
-      <td class="tax-summary-value">${moneyFormat(summary.expectedIncomeTax)}</td>
-      <td>So far Income Tax</td>
-      <td class="tax-summary-value">${moneyFormat(summary.soFarIncomeTax)}</td>
-    </tr>
-    <tr>
-      <td>Expected CSG</td>
-      <td class="tax-summary-value">${moneyFormat(summary.expectedCsg)}</td>
-      <td>So far CSG</td>
-      <td class="tax-summary-value">${moneyFormat(summary.soFarCsg)}</td>
-    </tr>
-    <tr>
-      <td>Expected Expenses</td>
-      <td><input id="tax-expected-expenses-input" class="tax-summary-input" type="number" min="0" step="0.01" value="${escapeHtml(String(state.taxExpectedExpenses))}"></td>
-      <td>So far Expenses</td>
-      <td class="tax-summary-value">${moneyFormat(summary.soFarExpenses)}</td>
-    </tr>
-    <tr>
-      <td class="tax-summary-label-strong">Total Amount Saved</td>
-      <td class="tax-summary-value tax-summary-value-strong ${summary.expectedSaved >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(summary.expectedSaved)}</td>
-      <td class="tax-summary-label-strong">Total Amount Saved</td>
-      <td class="tax-summary-value tax-summary-value-strong ${summary.soFarSaved >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(summary.soFarSaved)}</td>
+    <div class="tax-summary-cards">
+      <article class="tax-summary-card expected">
+        <p class="tax-summary-kicker">Expected by Year End</p>
+        <div class="tax-summary-card-value ${summary.expectedSaved >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(summary.expectedSaved)}</div>
+        <div class="tax-summary-card-copy">Target saved amount for Jul 2025 to Jun 2026 after tax, CSG, and planned expenses.</div>
+      </article>
+      <article class="tax-summary-card current">
+        <p class="tax-summary-kicker">Current / So Far</p>
+        <div class="tax-summary-card-value ${summary.soFarSaved >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(summary.soFarSaved)}</div>
+        <div class="tax-summary-card-copy">${escapeHtml(formatGapLabel(summary.soFarSaved - summary.expectedSaved, "vs expected saved amount"))}</div>
+      </article>
+    </div>
+    <section class="tax-expense-editor">
+      <div>
+        <div class="tax-expense-title">Expected Expenses</div>
+        <div class="tax-expense-copy">Set the full-year expense target here. The comparison below shows whether current spend is still within plan.</div>
+      </div>
+      <div class="tax-expense-input-wrap">
+        <label for="tax-expected-expenses-input">Expense Target</label>
+        <input id="tax-expected-expenses-input" class="tax-summary-input" type="number" min="0" step="0.01" value="${escapeHtml(String(state.taxExpectedExpenses))}">
+      </div>
+    </section>
+    <div class="tax-comparison-wrap">
+      <table class="tax-comparison-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Expected</th>
+            <th>Current</th>
+            <th>Gap</th>
+            <th>Progress</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${comparisons.map((row) => renderTaxComparisonRow(row)).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderTaxComparisonRow(row) {
+  const gap = row.current - row.expected;
+  const normalizedExpected = Math.abs(row.expected);
+  const progressRaw = normalizedExpected > 0 ? (Math.abs(row.current) / normalizedExpected) * 100 : 0;
+  const progress = Math.max(0, Math.min(progressRaw, 100));
+  const isOver = progressRaw > 100;
+  const gapToneClass = row.inverseTone
+    ? (gap <= 0 ? "amount-positive" : "amount-negative")
+    : (gap >= 0 ? "amount-positive" : "amount-negative");
+
+  return `
+    <tr class="${row.emphasize ? "tax-row-strong" : ""}">
+      <td>${escapeHtml(row.label)}</td>
+      <td class="tax-summary-value">${moneyFormat(row.expected)}</td>
+      <td class="tax-summary-value ${row.emphasize ? (row.current >= 0 ? "amount-positive" : "amount-negative") : ""}">${moneyFormat(row.current)}</td>
+      <td class="tax-summary-value ${gapToneClass}">${formatSignedMoney(gap)}</td>
+      <td class="tax-progress-cell">
+        <div class="tax-progress-stack">
+          <div class="tax-progress-copy">
+            <span>${escapeHtml(row.progressLabel)}</span>
+            <strong>${escapeHtml(formatPercent(progressRaw))}</strong>
+          </div>
+          <div class="tax-progress-track">
+            <div class="tax-progress-fill ${isOver ? "is-over" : ""}" style="--progress:${progress.toFixed(2)}%"></div>
+          </div>
+        </div>
+      </td>
     </tr>
   `;
 }
@@ -2576,6 +2650,23 @@ function compactMoneyFormat(value) {
     notation: "compact",
     maximumFractionDigits: 1,
   });
+}
+
+function formatSignedMoney(value) {
+  const numeric = Number(value || 0);
+  const absolute = moneyFormat(Math.abs(numeric));
+  return `${numeric >= 0 ? "+" : "-"}${absolute}`;
+}
+
+function formatPercent(value) {
+  if (!Number.isFinite(value)) return "0%";
+  return `${Math.round(value)}%`;
+}
+
+function formatGapLabel(value, suffix = "") {
+  const numeric = Number(value || 0);
+  const prefix = numeric >= 0 ? `${formatSignedMoney(numeric)} ahead` : `${formatSignedMoney(numeric)} behind`;
+  return suffix ? `${prefix} ${suffix}` : prefix;
 }
 
 function formatDateTime(value) {
