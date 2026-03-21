@@ -1323,10 +1323,16 @@ function renderMonthlySummary() {
 
   els.monthlySummaryMetrics.innerHTML = summaryTiles.map((metric) => `
     <article class="metric-tile metric-tile-inline ${metric.toneClass}">
-      <div class="metric-label">${escapeHtml(metric.label)}</div>
-      <div class="metric-value">${escapeHtml(metric.value)}</div>
-      <div class="metric-subtext">${escapeHtml(metric.subtext)}</div>
-      ${renderSparkline(metric.sparkValues, metric.toneClass)}
+      <div class="metric-tile-body">
+        <div class="metric-copy">
+          <div class="metric-label">${escapeHtml(metric.label)}</div>
+          <div class="metric-value">${escapeHtml(metric.value)}</div>
+          <div class="metric-subtext">${escapeHtml(metric.subtext)}</div>
+        </div>
+        <div class="metric-spark-wrap">
+          ${renderSparkline(metric.sparkValues, metric.toneClass)}
+        </div>
+      </div>
     </article>
   `).join("");
 
