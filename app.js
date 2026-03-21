@@ -1363,7 +1363,6 @@ function renderMonthlySummary() {
 
 function renderTrendInsights() {
   const filtered = state.filteredTransactions;
-  const debits = filtered.filter((txn) => toInsightAmount(txn.debit, txn.currency) > 0);
   const monthlyMap = new Map();
   const categoryMap = new Map();
   const forecastMap = new Map();
@@ -1407,13 +1406,6 @@ function renderTrendInsights() {
   });
 
   const monthlyRows = Array.from(monthlyMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  const monthlyDebitSeries = monthlyRows.map(([_, value]) => value.debit);
-  const monthlyCreditSeries = monthlyRows.map(([_, value]) => value.credit);
-  const netSeries = monthlyRows.map(([_, value]) => value.credit - value.debit);
-  const avgMonthlyDebit = monthlyDebitSeries.length ? monthlyDebitSeries.reduce((sum, v) => sum + v, 0) / monthlyDebitSeries.length : 0;
-  const avgMonthlyCredit = monthlyCreditSeries.length ? monthlyCreditSeries.reduce((sum, v) => sum + v, 0) / monthlyCreditSeries.length : 0;
-  const avgMonthlyNet = netSeries.length ? netSeries.reduce((sum, v) => sum + v, 0) / netSeries.length : 0;
-  const biggestDebit = debits.length ? Math.max(...debits.map((txn) => toInsightAmount(txn.debit, txn.currency))) : 0;
   const projectionYear = detectProjectionYear(filtered);
   const baseForecastRows = Array.from(forecastMap.values())
     .sort((a, b) => a.accountLabel.localeCompare(b.accountLabel))
@@ -1435,32 +1427,38 @@ function renderTrendInsights() {
     ? forecastRows.reduce((sum, row) => sum + row.endOfYear, 0)
     : totalCurrentBalance;
   const yearlyProjection = buildYearlyProjection(filtered, totalCurrentBalance, projectedClosing, forecastPlan);
+  const knownFutureOutflows = forecastPlan.projectedRecurringSpendTotal
+    + forecastPlan.projectedCsgTotal
+    + forecastPlan.projectedIncomeTaxTotal;
 
   const trendTiles = [
     {
-      label: "Average Monthly Debit",
-      value: moneyFormat(avgMonthlyDebit),
-      subtext: "Average outgoing total across visible months",
+      label: "Projected Year-End Balance",
+      value: moneyFormat(projectedClosing),
+      subtext: `Expected total balance by Dec ${projectionYear}`,
     },
     {
-      label: "Average Monthly Credit",
-      value: moneyFormat(avgMonthlyCredit),
-      subtext: "Average incoming total across visible months",
+      label: "Forecast Change",
+      value: moneyFormat(projectedClosing - totalCurrentBalance),
+      subtext: "Projected movement from today to year end",
+      toneClass: projectedClosing - totalCurrentBalance >= 0 ? "is-positive" : "is-negative",
     },
     {
-      label: "Average Monthly Net Flow",
-      value: moneyFormat(avgMonthlyNet),
-      subtext: "Average credit minus debit across visible months",
+      label: "Confirmed Future Income",
+      value: moneyFormat(forecastPlan.projectedIncomeTotal),
+      subtext: "Scheduled Tax Tracker receipts not yet received",
+      toneClass: "is-positive",
     },
     {
-      label: "Largest Debit Seen",
-      value: moneyFormat(biggestDebit),
-      subtext: "Highest single outgoing transaction in current view",
+      label: "Known Future Outflows",
+      value: moneyFormat(knownFutureOutflows),
+      subtext: "Recurring spend plus planned tax payments still ahead",
+      toneClass: "is-negative",
     },
   ];
 
   els.trendMetricsGrid.innerHTML = trendTiles.map((metric) => `
-    <article class="metric-tile">
+    <article class="metric-tile ${metric.toneClass || ""}">
       <div class="metric-label">${escapeHtml(metric.label)}</div>
       <div class="metric-value">${escapeHtml(metric.value)}</div>
       <div class="metric-subtext">${escapeHtml(metric.subtext)}</div>
@@ -1733,6 +1731,10 @@ function buildForecastPlan(transactions, forecastRows, targetYear) {
     return {
       futureMonthlyNetMap: new Map(),
       accountEndBalances: new Map(),
+      projectedIncomeTotal: 0,
+      projectedCsgTotal: 0,
+      projectedIncomeTaxTotal: 0,
+      projectedRecurringSpendTotal: 0,
     };
   }
 
@@ -1787,6 +1789,12 @@ function buildForecastPlan(transactions, forecastRows, targetYear) {
   ) {
     incomeTaxByMonth.set(`${targetYear}-09`, taxSummary.expectedIncomeTax);
   }
+
+  const projectedIncomeTotal = Array.from(projectedIncomeByMonth.values()).reduce((sum, value) => sum + value, 0);
+  const projectedCsgTotal = Array.from(projectedCsgByMonth.values()).reduce((sum, value) => sum + value, 0);
+  const projectedIncomeTaxTotal = Array.from(incomeTaxByMonth.values()).reduce((sum, value) => sum + value, 0);
+  const projectedRecurringSpendTotal = Array.from(projectedMonthlySpendByAccount.values())
+    .reduce((sum, value) => sum + value, 0) * Math.max(0, 13 - forecastStartMonth);
 
   for (let monthNumber = forecastStartMonth; monthNumber <= 12; monthNumber += 1) {
     const monthKey = `${targetYear}-${String(monthNumber).padStart(2, "0")}`;
@@ -1852,6 +1860,10 @@ function buildForecastPlan(transactions, forecastRows, targetYear) {
   return {
     futureMonthlyNetMap,
     accountEndBalances,
+    projectedIncomeTotal,
+    projectedCsgTotal,
+    projectedIncomeTaxTotal,
+    projectedRecurringSpendTotal,
   };
 }
 

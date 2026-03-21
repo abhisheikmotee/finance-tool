@@ -762,6 +762,23 @@ tbody tr:hover {
   padding-inline: 14px;
 }
 
+.table-panel-head {
+  margin-bottom: 10px;
+}
+
+.table-panel-title {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.table-panel-copy {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+
 .table-card td:nth-child(3),
 .tax-summary-table td:nth-child(1),
 .tax-summary-table td:nth-child(3) {
