@@ -753,9 +753,14 @@ tbody tr:hover {
   gap: 18px;
 }
 
-.insights-card .table-wrap + .table-wrap {
+.insights-card .table-wrap + .insights-subsection,
+.insights-card .insights-subsection {
   margin-top: 28px;
-  padding-top: 10px;
+}
+
+.insights-subsection .table-panel-head {
+  margin-bottom: 12px;
+  padding-inline: 2px;
 }
 
 .table-footer-action {
