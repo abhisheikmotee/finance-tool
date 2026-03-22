@@ -6,8 +6,6 @@ const GBP_TO_MUR_API_URL = "https://open.er-api.com/v6/latest/GBP";
 const TAX_ENTRIES_KEY = "taxEntries";
 const TAX_EXPECTED_EXPENSES_KEY = "taxExpectedExpenses";
 const TAX_EXPECTED_EXPENSES_MODE_KEY = "taxExpectedExpensesMode";
-const TAX_YEAR_START = "2025-07-01";
-const TAX_YEAR_END = "2026-06-30";
 const DEFAULT_EXPECTED_EXPENSES = 2500000;
 const AUTO_TAX_EXPENSES_MODE = "auto";
 const MANUAL_TAX_EXPENSES_MODE = "manual";
@@ -1930,6 +1928,7 @@ function buildForecastPlan(transactions, forecastRows, targetYear) {
   const sbmMurAccountLabel = pickForecastAccount(forecastRows, (row) => row.bankName === "SBM" && row.currency === "MUR");
   const mcbMurAccountLabel = pickForecastAccount(forecastRows, (row) => row.bankName === "MCB" && row.currency === "MUR");
   const taxSummary = computeTaxSummary();
+  const taxYearRange = getCurrentTaxYearRange();
   const projectedIncomeByMonth = new Map();
   const projectedCsgByMonth = new Map();
   const projectedMonthlySpendByAccount = new Map();
@@ -1963,7 +1962,7 @@ function buildForecastPlan(transactions, forecastRows, targetYear) {
   const incomeTaxPaymentDate = `${targetYear}-09-30`;
   if (
     incomeAccountLabel &&
-    Number(TAX_YEAR_END.slice(0, 4)) === targetYear &&
+    taxYearRange.endYear === targetYear &&
     incomeTaxPaymentDate > latestYearDate
   ) {
     incomeTaxByMonth.set(`${targetYear}-09`, taxSummary.expectedIncomeTax);
@@ -2056,6 +2055,20 @@ function getChronologicalTransactions(transactions) {
 
 function getPlanningYear() {
   return Number(getTodayDateString().slice(0, 4));
+}
+
+function getCurrentTaxYearRange(today = getTodayDateString()) {
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7));
+  const startYear = month >= 7 ? year : year - 1;
+  const endYear = startYear + 1;
+  return {
+    start: `${startYear}-07-01`,
+    end: `${endYear}-06-30`,
+    label: `Jul ${startYear} to Jun ${endYear}`,
+    startYear,
+    endYear,
+  };
 }
 
 function estimateRecurringMonthlySpend(transactions) {
@@ -2394,6 +2407,7 @@ function renderTaxTable() {
 
 function renderTaxSummary() {
   const summary = computeTaxSummary();
+  const taxYearRange = getCurrentTaxYearRange();
   const expenseTargetModeLabel = state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE ? "Manual" : "Auto";
   const comparisons = [
     {
@@ -2435,7 +2449,7 @@ function renderTaxSummary() {
       <article class="tax-summary-card expected">
         <p class="tax-summary-kicker">Expected by Year End</p>
         <div class="tax-summary-card-value ${summary.expectedSaved >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(summary.expectedSaved)}</div>
-        <div class="tax-summary-card-copy">Target saved amount for Jul 2025 to Jun 2026 after tax, CSG, and planned expenses.</div>
+        <div class="tax-summary-card-copy">Target saved amount for ${escapeHtml(taxYearRange.label)} after tax, CSG, and planned expenses.</div>
       </article>
       <article class="tax-summary-card current">
         <p class="tax-summary-kicker">Current / So Far</p>
@@ -2450,7 +2464,7 @@ function renderTaxSummary() {
           <span class="mode-badge ${state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE ? "manual" : "auto"}">${escapeHtml(expenseTargetModeLabel)}</span>
         </div>
         <div class="tax-expense-copy">Set the full-year expense target here. The comparison below shows whether current spend is still within plan.</div>
-        <div class="tax-expense-note">Auto uses expenses so far from Jul 2025 to Jun 2026 plus estimated remaining months from ledger history. Manual keeps your typed target.</div>
+        <div class="tax-expense-note">Auto uses expenses so far from ${escapeHtml(taxYearRange.label)} plus estimated remaining months from ledger history. Manual keeps your typed target.</div>
       </div>
       <div class="tax-expense-input-wrap">
         <label for="tax-expected-expenses-input">Expense Target</label>
@@ -2615,7 +2629,8 @@ function computeTaxEntry(entry) {
 }
 
 function computeTaxSummary() {
-  const entriesInWindow = state.taxEntries.filter((entry) => isWithinTaxYear(getEffectiveTaxReceiptDate(entry)));
+  const taxYearRange = getCurrentTaxYearRange();
+  const entriesInWindow = state.taxEntries.filter((entry) => isWithinTaxYear(getEffectiveTaxReceiptDate(entry), taxYearRange));
   const expectedIncome = entriesInWindow.reduce((sum, entry) => sum + computeTaxEntry(entry).amountReceivedMur, 0);
   const soFarIncome = entriesInWindow
     .filter((entry) => entry.dateReceived)
@@ -2626,7 +2641,7 @@ function computeTaxSummary() {
   const soFarCsg = entriesInWindow
     .filter((entry) => entry.csgPaymentReference.trim())
     .reduce((sum, entry) => sum + computeTaxEntry(entry).csgAmountPaidMur, 0);
-  const soFarExpenses = getTaxYearExpensesSoFar(state.transactions);
+  const soFarExpenses = getTaxYearExpensesSoFar(state.transactions, getTodayDateString(), taxYearRange);
   const expectedSaved = expectedIncome - expectedIncomeTax - expectedCsg - state.taxExpectedExpenses;
   const soFarSaved = soFarIncome - soFarIncomeTax - soFarCsg - soFarExpenses;
 
@@ -2652,17 +2667,18 @@ function refreshAutoTaxExpectedExpenses() {
 
 function calculateSuggestedTaxExpectedExpenses(transactions) {
   const today = getTodayDateString();
-  const soFarExpenses = getTaxYearExpensesSoFar(transactions, today);
-  const remainingMonths = getRemainingTaxYearMonths(today);
+  const taxYearRange = getCurrentTaxYearRange(today);
+  const soFarExpenses = getTaxYearExpensesSoFar(transactions, today, taxYearRange);
+  const remainingMonths = getRemainingTaxYearMonths(today, taxYearRange);
   const estimatedMonthlyExpenses = estimateMonthlyExpenseRunRate(transactions, today);
   const suggested = soFarExpenses + estimatedMonthlyExpenses * remainingMonths;
   return Math.max(0, roundMur(suggested));
 }
 
-function getTaxYearExpensesSoFar(transactions, today = getTodayDateString()) {
+function getTaxYearExpensesSoFar(transactions, today = getTodayDateString(), taxYearRange = getCurrentTaxYearRange(today)) {
   return transactions
     .filter((txn) =>
-      txn.txnDate >= TAX_YEAR_START
+      txn.txnDate >= taxYearRange.start
       && txn.txnDate <= today
       && txn.currency === "MUR"
       && (txn.bankName === "MCB" || txn.bankName === "SBM")
@@ -2670,12 +2686,12 @@ function getTaxYearExpensesSoFar(transactions, today = getTodayDateString()) {
     .reduce((sum, txn) => sum + Number(txn.debit || 0), 0);
 }
 
-function getRemainingTaxYearMonths(today = getTodayDateString()) {
-  if (today >= TAX_YEAR_END) {
+function getRemainingTaxYearMonths(today = getTodayDateString(), taxYearRange = getCurrentTaxYearRange(today)) {
+  if (today >= taxYearRange.end) {
     return 0;
   }
   const currentMonthStart = new Date(`${today.slice(0, 7)}-01T00:00:00`);
-  const taxYearEndMonthStart = new Date(`${TAX_YEAR_END.slice(0, 7)}-01T00:00:00`);
+  const taxYearEndMonthStart = new Date(`${taxYearRange.end.slice(0, 7)}-01T00:00:00`);
   const monthDiff = (taxYearEndMonthStart.getFullYear() - currentMonthStart.getFullYear()) * 12
     + (taxYearEndMonthStart.getMonth() - currentMonthStart.getMonth());
   return Math.max(0, monthDiff);
@@ -2726,8 +2742,8 @@ function calculateIncomeTax(amount) {
   return 500000 * 0.1 + (amount - 1000000) * 0.2;
 }
 
-function isWithinTaxYear(dateString) {
-  return Boolean(dateString) && dateString >= TAX_YEAR_START && dateString <= TAX_YEAR_END;
+function isWithinTaxYear(dateString, taxYearRange = getCurrentTaxYearRange()) {
+  return Boolean(dateString) && dateString >= taxYearRange.start && dateString <= taxYearRange.end;
 }
 
 function getEffectiveTaxReceiptDate(entry) {
@@ -3014,9 +3030,10 @@ function getEffectiveDateRange() {
     };
   }
   if (preset === "current-tax-year") {
+    const taxYearRange = getCurrentTaxYearRange(formatDateInputValue(today));
     return {
-      fromDate: TAX_YEAR_START,
-      toDate: TAX_YEAR_END,
+      fromDate: taxYearRange.start,
+      toDate: taxYearRange.end,
     };
   }
   if (preset === "last-year") {
