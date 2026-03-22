@@ -1,12 +1,12 @@
 :root {
   --bg: #d8eaf1;
   --bg-accent: #d7eef2;
-  --panel: rgba(239, 249, 255, 0.22);
-  --panel-strong: rgba(255, 255, 255, 0.3);
-  --panel-soft: rgba(209, 235, 245, 0.14);
-  --ink: #10252c;
-  --muted: #49616a;
-  --muted-soft: #647c86;
+  --panel: rgba(239, 249, 255, 0.16);
+  --panel-strong: rgba(255, 255, 255, 0.26);
+  --panel-soft: rgba(209, 235, 245, 0.1);
+  --ink: #0b1f27;
+  --muted: #3f5964;
+  --muted-soft: #56727d;
   --line: rgba(178, 226, 240, 0.26);
   --line-strong: rgba(255, 255, 255, 0.72);
   --primary: #0b8aa4;
@@ -14,11 +14,11 @@
   --primary-glow: rgba(61, 198, 224, 0.42);
   --gold: #d89a45;
   --danger: #b54868;
-  --shadow: 0 34px 100px rgba(24, 83, 100, 0.22);
-  --shadow-hover: 0 42px 118px rgba(20, 70, 86, 0.28);
+  --shadow: 0 38px 120px rgba(18, 70, 86, 0.24);
+  --shadow-hover: 0 48px 144px rgba(15, 58, 72, 0.32);
   --inner-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.92);
   --glass-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
-  --glass-glow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 22px 50px rgba(77, 198, 223, 0.14);
+  --glass-glow: 0 0 0 1px rgba(255, 255, 255, 0.2), 0 28px 72px rgba(77, 198, 223, 0.16);
 }
 
 * {
@@ -31,12 +31,12 @@ body {
   color: var(--ink);
   font-family: "Source Sans 3", sans-serif;
   background:
-    radial-gradient(circle at 10% 8%, rgba(255, 255, 255, 0.98), transparent 14%),
-    radial-gradient(circle at 84% 10%, rgba(67, 220, 255, 0.42), transparent 16%),
-    radial-gradient(circle at 86% 74%, rgba(255, 169, 111, 0.34), transparent 18%),
-    radial-gradient(circle at 16% 82%, rgba(84, 248, 202, 0.24), transparent 14%),
-    radial-gradient(circle at 48% 36%, rgba(255, 255, 255, 0.34), transparent 22%),
-    linear-gradient(135deg, #cae4ee 0%, #d9edf5 36%, #cde2ea 100%);
+    radial-gradient(circle at 8% 6%, rgba(255, 255, 255, 1), transparent 12%),
+    radial-gradient(circle at 82% 8%, rgba(45, 222, 255, 0.54), transparent 15%),
+    radial-gradient(circle at 90% 74%, rgba(255, 149, 82, 0.42), transparent 16%),
+    radial-gradient(circle at 14% 84%, rgba(67, 255, 207, 0.3), transparent 13%),
+    radial-gradient(circle at 50% 34%, rgba(255, 255, 255, 0.46), transparent 20%),
+    linear-gradient(135deg, #c4dfeb 0%, #d9eef8 34%, #c8dfe8 100%);
   background-attachment: fixed;
 }
 
@@ -65,11 +65,11 @@ body::after {
   inset: -10%;
   pointer-events: none;
   background:
-    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.82), transparent 15%),
-    radial-gradient(circle at 72% 16%, rgba(77, 222, 255, 0.34), transparent 16%),
-    radial-gradient(circle at 70% 62%, rgba(255, 186, 124, 0.28), transparent 15%),
-    radial-gradient(circle at 26% 72%, rgba(96, 255, 219, 0.18), transparent 15%);
-  filter: blur(34px);
+    radial-gradient(circle at 22% 16%, rgba(255, 255, 255, 0.92), transparent 14%),
+    radial-gradient(circle at 74% 14%, rgba(77, 222, 255, 0.44), transparent 15%),
+    radial-gradient(circle at 72% 62%, rgba(255, 186, 124, 0.34), transparent 14%),
+    radial-gradient(circle at 24% 70%, rgba(96, 255, 219, 0.24), transparent 14%);
+  filter: blur(44px);
   opacity: 1;
 }
 
@@ -83,10 +83,10 @@ body::after {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border: 1px solid rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   background: var(--panel);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(52px) saturate(190%);
+  -webkit-backdrop-filter: blur(52px) saturate(190%);
   border-radius: 28px;
   box-shadow: var(--shadow), var(--inner-highlight), var(--glass-edge), var(--glass-glow);
   transition: box-shadow 220ms ease, border-color 220ms ease, transform 220ms ease, background 220ms ease;
@@ -94,7 +94,7 @@ body::after {
 
 .glass-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-hover), var(--inner-highlight), var(--glass-edge), 0 0 0 1px rgba(255, 255, 255, 0.2), 0 28px 64px rgba(77, 198, 223, 0.18);
+  box-shadow: var(--shadow-hover), var(--inner-highlight), var(--glass-edge), 0 0 0 1px rgba(255, 255, 255, 0.24), 0 32px 82px rgba(77, 198, 223, 0.22);
 }
 
 .glass-card::before {
@@ -102,8 +102,9 @@ body::after {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0.18) 18%, rgba(255, 255, 255, 0.02) 44%),
-    linear-gradient(130deg, rgba(255, 255, 255, 0.34), transparent 34%, transparent 66%, rgba(255, 255, 255, 0.16));
+    radial-gradient(circle at 12% 10%, rgba(255, 255, 255, 0.9), transparent 22%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.66) 0%, rgba(255, 255, 255, 0.2) 18%, rgba(255, 255, 255, 0.02) 44%),
+    linear-gradient(128deg, rgba(255, 255, 255, 0.48), transparent 30%, transparent 62%, rgba(255, 255, 255, 0.18));
   pointer-events: none;
   opacity: 0.96;
   z-index: 0;
@@ -117,9 +118,10 @@ body::after {
   height: 220px;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.32), transparent 38%),
-    radial-gradient(circle at 60% 50%, rgba(77, 222, 255, 0.16), transparent 42%);
-  filter: blur(12px);
+    radial-gradient(circle at 28% 30%, rgba(255, 255, 255, 0.4), transparent 36%),
+    radial-gradient(circle at 60% 48%, rgba(77, 222, 255, 0.26), transparent 40%),
+    radial-gradient(circle at 76% 56%, rgba(255, 179, 120, 0.2), transparent 34%);
+  filter: blur(14px);
   pointer-events: none;
   z-index: 0;
 }
@@ -153,8 +155,8 @@ h2 {
   font-family: "Space Grotesk", sans-serif;
   line-height: 1.02;
   letter-spacing: -0.03em;
-  color: #0f232c;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  color: #081922;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.52);
 }
 
 h2 {
@@ -167,12 +169,12 @@ h3 {
   font-size: 1.22rem;
   line-height: 1.1;
   letter-spacing: -0.02em;
-  color: #15303a;
+  color: #102733;
 }
 
 .section-note {
   margin: 10px 0 0;
-  color: rgba(77, 95, 84, 0.78);
+  color: rgba(57, 80, 89, 0.9);
   font-size: 0.84rem;
   line-height: 1.45;
 }
@@ -193,7 +195,7 @@ h3 {
   margin-top: 12px;
   padding: 12px 14px;
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(211, 237, 244, 0.24));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(211, 237, 244, 0.1));
   color: var(--primary-strong);
   font-weight: 700;
   border: 1px solid rgba(255, 255, 255, 0.42);
@@ -612,7 +614,7 @@ h3 {
 }
 
 .metric-label {
-  color: var(--muted-soft);
+  color: #4e6772;
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -628,7 +630,7 @@ h3 {
 
 .metric-subtext {
   margin-top: 8px;
-  color: var(--muted-soft);
+  color: #4f6873;
   max-width: 26ch;
   font-size: 0.88rem;
   line-height: 1.4;
@@ -636,7 +638,7 @@ h3 {
 
 .metric-detail {
   margin-top: 6px;
-  color: rgba(77, 95, 84, 0.78);
+  color: rgba(63, 88, 99, 0.9);
   font-size: 0.8rem;
   line-height: 1.35;
 }
@@ -742,7 +744,7 @@ h3 {
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(216, 238, 244, 0.08));
   border: 1px solid var(--line);
-  color: var(--muted-soft);
+  color: #4c6671;
   font-size: 0.82rem;
 }
 
@@ -757,7 +759,7 @@ h3 {
 }
 
 .field span {
-  color: var(--muted-soft);
+  color: #49636f;
   font-size: 0.84rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -823,7 +825,7 @@ h3 {
 }
 
 .account-number {
-  color: #4d5f54;
+  color: #465f69;
   font-size: 0.84rem;
   font-weight: 600;
 }
@@ -936,7 +938,7 @@ thead th {
   top: 0;
   z-index: 1;
   background: rgba(236, 247, 252, 0.26);
-  color: #56727c;
+  color: #47626d;
   font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -1373,7 +1375,7 @@ tbody tr:hover {
 .table-panel-copy {
   margin-top: 8px;
   max-width: 52ch;
-  color: rgba(77, 95, 84, 0.78);
+  color: rgba(60, 83, 93, 0.9);
   font-size: 0.84rem;
   line-height: 1.5;
 }
@@ -1405,7 +1407,7 @@ tbody tr:hover {
 }
 
 .category-bar-label {
-  color: #24352d;
+  color: #17303a;
   font-size: 0.96rem;
   font-weight: 600;
   line-height: 1.25;
@@ -1429,7 +1431,7 @@ tbody tr:hover {
 }
 
 .category-bar-value {
-  color: #52645a;
+  color: #415b67;
   font-weight: 800;
   letter-spacing: 0.01em;
 }
@@ -1524,7 +1526,7 @@ tbody tr:hover {
 .trendline-summary {
   margin: 0;
   max-width: 680px;
-  color: var(--muted-soft);
+  color: #48626e;
   line-height: 1.5;
 }
 
@@ -1584,7 +1586,7 @@ tbody tr:hover {
 
 .forecast-card-value {
   font-weight: 800;
-  color: #12231b;
+  color: #0a1c25;
   letter-spacing: -0.015em;
 }
 
@@ -1639,7 +1641,7 @@ tbody tr:hover {
 }
 
 .trend-label {
-  fill: #5b7380;
+  fill: #45616d;
   font-size: 12px;
   font-family: "Source Sans 3", sans-serif;
 }
@@ -1678,7 +1680,7 @@ tbody tr:hover {
   max-width: 560px;
   margin: 0 auto;
   text-align: center;
-  color: var(--muted-soft);
+  color: #48626e;
   font-size: 0.92rem;
   font-weight: 600;
   border: 1px dashed rgba(129, 181, 198, 0.48);
