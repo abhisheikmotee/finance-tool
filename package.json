@@ -1,0 +1,27 @@
+{
+  "name": "finance-tool",
+  "version": "1.0.0",
+  "description": "Personal finance dashboard and tax tracker",
+  "main": "app.js",
+  "scripts": {
+    "serve": "python3 -m http.server 4173",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abhisheikmotee/finance-tool.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/abhisheikmotee/finance-tool/issues"
+  },
+  "homepage": "https://github.com/abhisheikmotee/finance-tool#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "playwright": "^1.58.2"
+  }
+}
