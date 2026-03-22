@@ -2,9 +2,9 @@
   "name": "finance-tool",
   "version": "1.0.0",
   "description": "Personal finance dashboard and tax tracker",
-  "main": "server.js",
+  "main": "app.js",
   "scripts": {
-    "serve": "node server.js",
+    "serve": "python3 -m http.server 4173",
     "test": "playwright test",
     "test:ui": "playwright test --ui"
   },

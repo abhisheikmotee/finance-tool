@@ -9,6 +9,8 @@ const TAX_EXPECTED_EXPENSES_MODE_KEY = "taxExpectedExpensesMode";
 const CATEGORY_ASSIGNMENTS_KEY = "categoryAssignments";
 const CATEGORY_RULES_KEY = "categoryRules";
 const REVIEW_DISMISSALS_KEY = "reviewDismissals";
+const OPENAI_API_KEY = "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";
+const OPENAI_MODEL = "gpt-5-mini";
 const DEFAULT_EXPECTED_EXPENSES = 2500000;
 const AUTO_TAX_EXPENSES_MODE = "auto";
 const MANUAL_TAX_EXPENSES_MODE = "manual";
@@ -620,23 +622,12 @@ async function restoreCategorizationState() {
 }
 
 async function initializeAiCategorization() {
-  try {
-    const response = await fetch("/api/ai-status", { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    state.ai.available = Boolean(data.available);
-    state.ai.checked = true;
-    state.ai.model = String(data.model || "");
-    state.ai.message = String(data.message || (state.ai.available ? "AI categorization is ready." : "AI categorization is unavailable."));
-  } catch (error) {
-    state.ai.available = false;
-    state.ai.checked = true;
-    state.ai.model = "";
-    state.ai.message = `Could not reach the AI service: ${error.message}`;
-  }
+  state.ai.available = Boolean(OPENAI_API_KEY);
+  state.ai.checked = true;
+  state.ai.model = OPENAI_MODEL;
+  state.ai.message = OPENAI_API_KEY
+    ? `AI categorization is ready in the browser via ${OPENAI_MODEL}.`
+    : "No OpenAI API key is configured in app.js.";
 }
 
 async function refreshAiSuggestions(force = false) {
@@ -667,39 +658,99 @@ async function refreshAiSuggestions(force = false) {
   renderCategoryReview();
 
   try {
-    const response = await fetch("/api/categorize", {
+    const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        allowedCategories: CATEGORY_OPTIONS,
-        transactions: rowsToFetch.map((item) => ({
-          rowHash: item.txn.rowHash,
-          description: item.txn.description,
-          reference: item.txn.reference,
-          debit: item.txn.debit,
-          credit: item.txn.credit,
-          accountLabel: item.txn.accountLabel,
-          accountCurrency: item.txn.currency,
-          localSuggestion: {
-            category: item.suggestion.category,
-            confidence: item.suggestion.confidence,
-            reason: item.suggestion.reason,
+        model: OPENAI_MODEL,
+        reasoning: { effort: "low" },
+        input: [
+          {
+            role: "developer",
+            content: [
+              {
+                type: "input_text",
+                text:
+                  "You classify finance transactions into exactly one allowed category. " +
+                  "Be conservative. When uncertain, choose Other and set shouldReview to true. " +
+                  "Use the local suggestion and merchant history as hints, not facts. " +
+                  "Return strict JSON only.",
+              },
+            ],
           },
-          merchantKey: item.suggestion.merchantKey || extractMerchantKey(item.txn),
-          merchantHistory: buildAiMerchantHistory(item.txn, context),
-        })),
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: JSON.stringify({
+                  allowedCategories: CATEGORY_OPTIONS,
+                  transactions: rowsToFetch.map((item) => ({
+                    rowHash: item.txn.rowHash,
+                    description: item.txn.description,
+                    reference: item.txn.reference,
+                    debit: item.txn.debit,
+                    credit: item.txn.credit,
+                    accountLabel: item.txn.accountLabel,
+                    accountCurrency: item.txn.currency,
+                    localSuggestion: {
+                      category: item.suggestion.category,
+                      confidence: item.suggestion.confidence,
+                      reason: item.suggestion.reason,
+                    },
+                    merchantKey: item.suggestion.merchantKey || extractMerchantKey(item.txn),
+                    merchantHistory: buildAiMerchantHistory(item.txn, context),
+                  })),
+                }),
+              },
+            ],
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "categorization_batch",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                suggestions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      rowHash: { type: "string" },
+                      category: { type: "string" },
+                      confidence: { type: "number", minimum: 0, maximum: 1 },
+                      reason: { type: "string" },
+                      shouldReview: { type: "boolean" },
+                      merchantKey: { type: "string" },
+                    },
+                    required: ["rowHash", "category", "confidence", "reason", "shouldReview", "merchantKey"],
+                  },
+                },
+              },
+              required: ["suggestions"],
+            },
+          },
+        },
       }),
     });
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data?.error || data?.message || `HTTP ${response.status}`);
+      throw new Error(data?.error?.message || data?.message || `HTTP ${response.status}`);
     }
 
     const nextSuggestions = {};
-    (data.suggestions || []).forEach((item) => {
+    const outputText = extractOpenAiOutputText(data);
+    const parsed = outputText ? JSON.parse(outputText) : { suggestions: [] };
+    (parsed.suggestions || []).forEach((item) => {
       if (!item?.rowHash) return;
       nextSuggestions[item.rowHash] = {
         category: CATEGORY_OPTIONS.includes(item.category) ? item.category : "Other",
@@ -715,7 +766,7 @@ async function refreshAiSuggestions(force = false) {
       ...state.aiSuggestions,
       ...nextSuggestions,
     };
-    state.ai.model = String(data.model || state.ai.model || "");
+    state.ai.model = OPENAI_MODEL;
     state.ai.message = state.ai.model
       ? `AI suggestions powered by ${state.ai.model}. Review before saving rules.`
       : "AI suggestions are ready. Review before saving rules.";
@@ -3443,6 +3494,22 @@ function clampConfidence(value) {
     return 0.5;
   }
   return Math.max(0, Math.min(1, numeric));
+}
+
+function extractOpenAiOutputText(response) {
+  if (typeof response?.output_text === "string" && response.output_text.trim()) {
+    return response.output_text;
+  }
+
+  const parts = [];
+  (response?.output || []).forEach((item) => {
+    (item?.content || []).forEach((content) => {
+      if (typeof content?.text === "string" && content.text.trim()) {
+        parts.push(content.text);
+      }
+    });
+  });
+  return parts.join("\n").trim();
 }
 
 async function handleCategoryReviewClick(event) {
