@@ -5,6 +5,7 @@ test("dashboard loads core sections", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "At a Glance", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Transactions", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Categorization Inbox", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Transactions Table", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Monthly Cash Flow", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Year-End Outlook", exact: true })).toBeVisible();
