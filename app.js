@@ -14,7 +14,7 @@ const OPENAI_MODEL = "gpt-5-mini";
 const DEFAULT_EXPECTED_EXPENSES = 2500000;
 const AUTO_TAX_EXPENSES_MODE = "auto";
 const MANUAL_TAX_EXPENSES_MODE = "manual";
-const CATEGORY_REVIEW_LIMIT = 8;
+const CATEGORY_REVIEW_LIMIT = 4;
 const FORECAST_SPEND_CATEGORIES = new Set([
   "Food Delivery",
   "Dining / Restaurants",
@@ -673,11 +673,7 @@ async function refreshAiSuggestions(force = false) {
             content: [
               {
                 type: "input_text",
-                text:
-                  "You classify finance transactions into exactly one allowed category. " +
-                  "Be conservative. When uncertain, choose Other and set shouldReview to true. " +
-                  "Use the local suggestion and merchant history as hints, not facts. " +
-                  "Return strict JSON only.",
+                text: "Classify each transaction into one allowed category. Be conservative. If unsure, use Other and shouldReview=true. Return strict JSON.",
               },
             ],
           },
@@ -688,22 +684,7 @@ async function refreshAiSuggestions(force = false) {
                 type: "input_text",
                 text: JSON.stringify({
                   allowedCategories: CATEGORY_OPTIONS,
-                  transactions: rowsToFetch.map((item) => ({
-                    rowHash: item.txn.rowHash,
-                    description: item.txn.description,
-                    reference: item.txn.reference,
-                    debit: item.txn.debit,
-                    credit: item.txn.credit,
-                    accountLabel: item.txn.accountLabel,
-                    accountCurrency: item.txn.currency,
-                    localSuggestion: {
-                      category: item.suggestion.category,
-                      confidence: item.suggestion.confidence,
-                      reason: item.suggestion.reason,
-                    },
-                    merchantKey: item.suggestion.merchantKey || extractMerchantKey(item.txn),
-                    merchantHistory: buildAiMerchantHistory(item.txn, context),
-                  })),
+                  transactions: rowsToFetch.map((item) => buildAiTransactionPayload(item, context)),
                 }),
               },
             ],
@@ -3485,7 +3466,8 @@ function buildAiMerchantHistory(txn, context = buildCategorizationContext(state.
 
   return Array.from(history.categories.entries())
     .sort((a, b) => b[1] - a[1])
-    .map(([category, count]) => ({ category, count }));
+    .slice(0, 2)
+    .map(([category, count]) => ({ c: category, n: count }));
 }
 
 function clampConfidence(value) {
@@ -3510,6 +3492,30 @@ function extractOpenAiOutputText(response) {
     });
   });
   return parts.join("\n").trim();
+}
+
+function buildAiTransactionPayload(item, context = buildCategorizationContext(state.transactions)) {
+  const txn = item.txn;
+  const signedAmount = txn.credit > 0 ? Number(txn.credit || 0) : -Number(txn.debit || 0);
+  return {
+    r: txn.rowHash,
+    d: compactText(txn.description, 96),
+    f: compactText(txn.reference, 48),
+    a: compactText(txn.accountLabel, 42),
+    c: txn.currency,
+    m: item.suggestion.merchantKey || extractMerchantKey(txn),
+    amt: signedAmount,
+    ls: item.suggestion.category,
+    lc: Math.round(item.suggestion.confidence * 100) / 100,
+    h: buildAiMerchantHistory(txn, context),
+  };
+}
+
+function compactText(value, limit = 80) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, limit);
 }
 
 async function handleCategoryReviewClick(event) {
