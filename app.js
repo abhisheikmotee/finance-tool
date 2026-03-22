@@ -6,13 +6,9 @@ const GBP_TO_MUR_API_URL = "https://open.er-api.com/v6/latest/GBP";
 const TAX_ENTRIES_KEY = "taxEntries";
 const TAX_EXPECTED_EXPENSES_KEY = "taxExpectedExpenses";
 const TAX_EXPECTED_EXPENSES_MODE_KEY = "taxExpectedExpensesMode";
-const CATEGORY_ASSIGNMENTS_KEY = "categoryAssignments";
-const CATEGORY_RULES_KEY = "categoryRules";
-const REVIEW_DISMISSALS_KEY = "reviewDismissals";
 const DEFAULT_EXPECTED_EXPENSES = 2500000;
 const AUTO_TAX_EXPENSES_MODE = "auto";
 const MANUAL_TAX_EXPENSES_MODE = "manual";
-const CATEGORY_REVIEW_LIMIT = 8;
 const FORECAST_SPEND_CATEGORIES = new Set([
   "Food Delivery",
   "Dining / Restaurants",
@@ -20,72 +16,6 @@ const FORECAST_SPEND_CATEGORIES = new Set([
   "Insurance",
   "Transfers",
 ]);
-const CATEGORY_PATTERNS = [
-  { needle: "DELIVOO", label: "Food Delivery", confidence: 0.92, reason: "Matched a known food delivery merchant." },
-  { needle: "KOON PO YUEN", label: "Dining / Restaurants", confidence: 0.94, reason: "Matched a recurring restaurant merchant." },
-  { needle: "HOT & POT", label: "Dining / Restaurants", confidence: 0.94, reason: "Matched a recurring restaurant merchant." },
-  { needle: "KENTUCKY FRIED CHICKEN", label: "Dining / Restaurants", confidence: 0.95, reason: "Matched a recurring restaurant merchant." },
-  { needle: "K.F.C", label: "Dining / Restaurants", confidence: 0.91, reason: "Matched a recurring restaurant merchant." },
-  { needle: "BLUE JUICE", label: "Dining / Restaurants", confidence: 0.91, reason: "Matched a recurring restaurant merchant." },
-  { needle: "NINE DRAGONS", label: "Dining / Restaurants", confidence: 0.91, reason: "Matched a recurring restaurant merchant." },
-  { needle: "STEERS", label: "Dining / Restaurants", confidence: 0.91, reason: "Matched a recurring restaurant merchant." },
-  { needle: "LITTLE ITA", label: "Dining / Restaurants", confidence: 0.89, reason: "Matched a recurring restaurant merchant." },
-  { needle: "LITTLE KING", label: "Dining / Restaurants", confidence: 0.89, reason: "Matched a recurring restaurant merchant." },
-  { needle: "MOVIE STORE", label: "Dining / Restaurants", confidence: 0.76, reason: "Matched a known entertainment or dining merchant." },
-  { needle: "JANGO S CAFE", label: "Dining / Restaurants", confidence: 0.92, reason: "Matched a recurring cafe merchant." },
-  { needle: "CHILLAX", label: "Dining / Restaurants", confidence: 0.82, reason: "Matched a likely restaurant or leisure merchant." },
-  { needle: "SEN & KEN", label: "Dining / Restaurants", confidence: 0.86, reason: "Matched a recurring restaurant merchant." },
-  { needle: "DEBONNAIRS", label: "Dining / Restaurants", confidence: 0.93, reason: "Matched a recurring restaurant merchant." },
-  { needle: "RATATOUILLE", label: "Dining / Restaurants", confidence: 0.85, reason: "Matched a likely restaurant merchant." },
-  { needle: "RESTOWAY", label: "Dining / Restaurants", confidence: 0.8, reason: "Matched a likely restaurant merchant." },
-  { needle: "ARTISAN COFFEE", label: "Dining / Restaurants", confidence: 0.91, reason: "Matched a recurring cafe merchant." },
-  { needle: "EL MONDO", label: "Dining / Restaurants", confidence: 0.85, reason: "Matched a likely restaurant merchant." },
-  { needle: "NANDO'S", label: "Dining / Restaurants", confidence: 0.93, reason: "Matched a recurring restaurant merchant." },
-  { needle: "SCOTT", label: "Shopping", confidence: 0.7, reason: "Matched a known shopping-related merchant." },
-  { needle: "WINNERS", label: "Shopping", confidence: 0.84, reason: "Matched a known retail merchant." },
-  { needle: "PRICE GURU", label: "Shopping", confidence: 0.9, reason: "Matched a known retail merchant." },
-  { needle: "ONEOONE MULTIMEDIA", label: "Shopping", confidence: 0.9, reason: "Matched a known electronics or retail merchant." },
-  { needle: "PIONEER MARKETING&TRADING", label: "Shopping", confidence: 0.85, reason: "Matched a known retail merchant." },
-  { needle: "INTERMART", label: "Groceries", confidence: 0.93, reason: "Matched a known grocery merchant." },
-  { needle: "EBENE PHARMACY", label: "Pharmacy / Medical", confidence: 0.94, reason: "Matched a known pharmacy merchant." },
-  { needle: "MEDACTIV", label: "Pharmacy / Medical", confidence: 0.93, reason: "Matched a known pharmacy merchant." },
-  { needle: "PHARMACIE ST JEAN", label: "Pharmacy / Medical", confidence: 0.93, reason: "Matched a known pharmacy merchant." },
-  { needle: "GALIEN PHARMACY", label: "Pharmacy / Medical", confidence: 0.93, reason: "Matched a known pharmacy merchant." },
-  { needle: "SMS TOPUP", label: "Mobile / Telecom", confidence: 0.9, reason: "Matched a mobile top-up merchant." },
-  { needle: "SMS TOP UP", label: "Mobile / Telecom", confidence: 0.9, reason: "Matched a mobile top-up merchant." },
-  { needle: "EBANKING TOPUP", label: "Mobile / Telecom", confidence: 0.86, reason: "Matched a telecom top-up merchant." },
-  { needle: "TELECOM", label: "Mobile / Telecom", confidence: 0.72, reason: "Matched a telecom keyword." },
-  { needle: "ICMARKET", label: "Trading / Broker", confidence: 0.96, reason: "Matched a known trading platform." },
-  { needle: "MQL5", label: "Trading / Broker", confidence: 0.95, reason: "Matched a trading platform keyword." },
-  { needle: "ICM PAY", label: "Trading / Broker", confidence: 0.95, reason: "Matched a trading platform keyword." },
-  { needle: "IC MARKET", label: "Trading / Broker", confidence: 0.95, reason: "Matched a known trading platform." },
-  { needle: "ZULU REPAY", label: "Trading / Broker", confidence: 0.9, reason: "Matched a trading repayment keyword." },
-  { needle: "MT4 REPAY", label: "Trading / Broker", confidence: 0.91, reason: "Matched a trading repayment keyword." },
-  { needle: "MISSING MT4", label: "Trading / Broker", confidence: 0.82, reason: "Matched a trading keyword." },
-  { needle: "MRA", label: "Taxes / Government", confidence: 0.86, reason: "Matched a government payment keyword." },
-  { needle: "CSG", label: "Taxes / Government", confidence: 0.84, reason: "Matched a tax payment keyword." },
-  { needle: "STATEINSURANCE", label: "Insurance", confidence: 0.92, reason: "Matched an insurance payment keyword." },
-  { needle: "LAPRUDENCE", label: "Insurance", confidence: 0.92, reason: "Matched an insurance payment keyword." },
-  { needle: "CREDIT INTEREST", label: "Interest", confidence: 0.95, reason: "Matched bank interest wording." },
-  { needle: "VISA CARD PAYMENT", label: "Card Repayment", confidence: 0.92, reason: "Matched card repayment wording." },
-  { needle: "ATM CASH WITHDRAWAL", label: "Cash Withdrawal", confidence: 0.94, reason: "Matched ATM withdrawal wording." },
-  { needle: "ATM WITHDRAWAL", label: "Cash Withdrawal", confidence: 0.91, reason: "Matched withdrawal wording." },
-  { needle: "CASH WITHDRAWAL", label: "Cash Withdrawal", confidence: 0.9, reason: "Matched withdrawal wording." },
-  { needle: "SI EXECUTION CHARGE", label: "Bank Fees", confidence: 0.94, reason: "Matched bank fee wording." },
-  { needle: "SI SC DR", label: "Bank Fees", confidence: 0.92, reason: "Matched bank fee wording." },
-  { needle: "CHARGE AC-", label: "Bank Fees", confidence: 0.86, reason: "Matched bank fee wording." },
-  { needle: "PAYPAL CHARGES", label: "Bank Fees", confidence: 0.9, reason: "Matched fee wording." },
-  { needle: "INWARD TRANSFER", label: "Transfers In", confidence: 0.72, reason: "Matched transfer wording, but could need review." },
-  { needle: "GBP TO SBM", label: "Transfers Between Own Accounts", confidence: 0.95, reason: "Matched a named own-account transfer." },
-  { needle: "MCB TO SBM", label: "Transfers Between Own Accounts", confidence: 0.95, reason: "Matched a named own-account transfer." },
-  { needle: "JUICE ACCOUNT TRANSFER", label: "Transfers", confidence: 0.82, reason: "Matched transfer wording." },
-  { needle: "JUICE TRANSFER", label: "Transfers", confidence: 0.82, reason: "Matched transfer wording." },
-  { needle: "BILL REFUND TO -", label: "Transfers", confidence: 0.74, reason: "Matched refund or transfer wording." },
-  { needle: "BILL REFUND TO /", label: "Transfers", confidence: 0.74, reason: "Matched refund or transfer wording." },
-  { needle: "LENDING TO -", label: "Transfers", confidence: 0.72, reason: "Matched transfer wording." },
-  { needle: "REFUND/", label: "Transfers", confidence: 0.68, reason: "Matched refund wording that could need review." },
-];
-const CATEGORY_OPTIONS = Array.from(new Set(["Other", "Salary", ...CATEGORY_PATTERNS.map((item) => item.label)])).sort();
 const DEFAULT_TAX_ENTRIES = [
   {
     invoicedDate: "2025-06-30",
@@ -201,9 +131,6 @@ const state = {
   taxEntries: [],
   taxExpectedExpenses: DEFAULT_EXPECTED_EXPENSES,
   taxExpectedExpensesMode: AUTO_TAX_EXPENSES_MODE,
-  categoryAssignments: {},
-  categoryRules: [],
-  reviewDismissals: [],
   currentPage: 1,
   pageSize: 10,
   ledgerHandle: null,
@@ -232,7 +159,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   await restoreLedgerHandle();
   await restoreExchangeRate();
   await restoreTaxEntries();
-  await restoreCategorizationState();
   await refreshExchangeRate();
   applyFilters();
   renderAll();
@@ -256,8 +182,6 @@ function cacheElements() {
   els.metricsGrid = document.getElementById("metrics-grid");
   els.metricsLastImport = document.getElementById("metrics-last-import");
   els.trendMetricsGrid = document.getElementById("trend-metrics-grid");
-  els.categoryReviewSummary = document.getElementById("category-review-summary");
-  els.categoryReviewList = document.getElementById("category-review-list");
   els.searchInput = document.getElementById("search-input");
   els.accountFilter = document.getElementById("account-filter");
   els.quickFilterChips = document.getElementById("quick-filter-chips");
@@ -377,7 +301,6 @@ function bindEvents() {
   els.taxBody.addEventListener("input", handleTaxTableInput);
   els.taxBody.addEventListener("click", handleTaxTableClick);
   els.taxSummaryBody.addEventListener("change", handleTaxSummaryInput);
-  els.categoryReviewList.addEventListener("click", handleCategoryReviewClick);
 }
 
 function onFilterChange() {
@@ -572,38 +495,6 @@ async function restoreTaxEntries() {
   }
 }
 
-async function restoreCategorizationState() {
-  if (
-    Object.keys(state.categoryAssignments).length
-    || state.categoryRules.length
-    || state.reviewDismissals.length
-    || state.transactions.length
-  ) {
-    return;
-  }
-
-  try {
-    const savedAssignments = await getSetting(CATEGORY_ASSIGNMENTS_KEY);
-    state.categoryAssignments = savedAssignments && typeof savedAssignments === "object" ? savedAssignments : {};
-  } catch (error) {
-    logMessage(`Could not restore category assignments: ${error.message}`);
-  }
-
-  try {
-    const savedRules = await getSetting(CATEGORY_RULES_KEY);
-    state.categoryRules = Array.isArray(savedRules) ? savedRules.map(normalizeCategoryRule) : [];
-  } catch (error) {
-    logMessage(`Could not restore category rules: ${error.message}`);
-  }
-
-  try {
-    const savedDismissals = await getSetting(REVIEW_DISMISSALS_KEY);
-    state.reviewDismissals = Array.isArray(savedDismissals) ? savedDismissals.map(String) : [];
-  } catch (error) {
-    logMessage(`Could not restore review dismissals: ${error.message}`);
-  }
-}
-
 async function refreshExchangeRate() {
   try {
     const response = await fetch(GBP_TO_MUR_API_URL, { cache: "no-store" });
@@ -644,16 +535,12 @@ async function createNewLedger() {
   state.taxEntries = cloneDefaultTaxEntries();
   state.taxExpectedExpensesMode = AUTO_TAX_EXPENSES_MODE;
   state.taxExpectedExpenses = calculateSuggestedTaxExpectedExpenses(state.transactions);
-  state.categoryAssignments = {};
-  state.categoryRules = [];
-  state.reviewDismissals = [];
   state.currentPage = 1;
   state.ledgerHandle = null;
   state.ledgerName = "finance-ledger.json";
   state.saveMode = supportsFileSystemAccess() ? "download" : "download";
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
-  await persistCategoryState();
   applyFilters();
   renderAll();
   updateLedgerStatus(`New ledger ready: ${state.ledgerName}. Click Save to download it.`);
@@ -701,9 +588,6 @@ async function loadLedgerFromHandle(handle, storeHandle = false) {
   state.transactions = normalizeTransactionRows(data.transactions || []);
   state.imports = (data.imports || []).sort((a, b) => a.importedAt.localeCompare(b.importedAt));
   state.taxEntries = Array.isArray(data.taxEntries) ? data.taxEntries.map(normalizeTaxEntry) : [];
-  state.categoryAssignments = normalizeCategoryAssignments(data.categoryAssignments);
-  state.categoryRules = Array.isArray(data.categoryRules) ? data.categoryRules.map(normalizeCategoryRule) : [];
-  state.reviewDismissals = Array.isArray(data.reviewDismissals) ? data.reviewDismissals.map(String) : [];
   state.taxExpectedExpensesMode = data.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE
     ? MANUAL_TAX_EXPENSES_MODE
     : AUTO_TAX_EXPENSES_MODE;
@@ -712,7 +596,6 @@ async function loadLedgerFromHandle(handle, storeHandle = false) {
     : calculateSuggestedTaxExpectedExpenses(state.transactions);
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
-  await persistCategoryState();
   if (storeHandle) {
     await setSetting("ledgerHandle", handle);
   }
@@ -730,9 +613,6 @@ async function loadLedgerFromFile(file) {
   state.transactions = normalizeTransactionRows(data.transactions || []);
   state.imports = (data.imports || []).sort((a, b) => a.importedAt.localeCompare(b.importedAt));
   state.taxEntries = Array.isArray(data.taxEntries) ? data.taxEntries.map(normalizeTaxEntry) : [];
-  state.categoryAssignments = normalizeCategoryAssignments(data.categoryAssignments);
-  state.categoryRules = Array.isArray(data.categoryRules) ? data.categoryRules.map(normalizeCategoryRule) : [];
-  state.reviewDismissals = Array.isArray(data.reviewDismissals) ? data.reviewDismissals.map(String) : [];
   state.taxExpectedExpensesMode = data.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE
     ? MANUAL_TAX_EXPENSES_MODE
     : AUTO_TAX_EXPENSES_MODE;
@@ -741,7 +621,6 @@ async function loadLedgerFromFile(file) {
     : calculateSuggestedTaxExpectedExpenses(state.transactions);
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
-  await persistCategoryState();
   updateLedgerStatus(`Opened ledger: ${state.ledgerName}. Save will download the updated file.`);
   applyFilters();
   renderAll();
@@ -791,9 +670,6 @@ function buildLedgerSnapshot() {
     taxEntries: state.taxEntries,
     taxExpectedExpenses: state.taxExpectedExpenses,
     taxExpectedExpensesMode: state.taxExpectedExpensesMode,
-    categoryAssignments: state.categoryAssignments,
-    categoryRules: state.categoryRules,
-    reviewDismissals: state.reviewDismissals,
   };
 }
 
@@ -806,9 +682,6 @@ function emptyLedgerSnapshot() {
     taxEntries: cloneDefaultTaxEntries(),
     taxExpectedExpenses: DEFAULT_EXPECTED_EXPENSES,
     taxExpectedExpensesMode: AUTO_TAX_EXPENSES_MODE,
-    categoryAssignments: {},
-    categoryRules: [],
-    reviewDismissals: [],
   };
 }
 
@@ -1177,7 +1050,6 @@ function applyFilters() {
   const account = els.accountFilter.value || "all";
   const { fromDate, toDate } = getEffectiveDateRange();
   const { salaryOnly, tradingOnly, excludeTransfers, bankOnly } = state.quickFilters;
-  const categoryContext = buildCategorizationContext(state.transactions);
 
   state.filteredTransactions = state.transactions.filter((txn) => {
     const matchesQuery = !query || [txn.description, txn.reference, txn.sourceFile, txn.accountLabel]
@@ -1186,8 +1058,8 @@ function applyFilters() {
     const matchesFromDate = !fromDate || txn.txnDate >= fromDate;
     const matchesToDate = !toDate || txn.txnDate <= toDate;
     const matchesSalary = !salaryOnly || isSalaryTransaction(txn);
-    const matchesTrading = !tradingOnly || isTradingTransaction(txn, categoryContext);
-    const matchesTransfer = !excludeTransfers || !isTransferTransaction(txn, categoryContext);
+    const matchesTrading = !tradingOnly || isTradingTransaction(txn);
+    const matchesTransfer = !excludeTransfers || !isTransferTransaction(txn);
     const matchesBank = bankOnly === "all"
       || (bankOnly === "sbm-only" && txn.bankName === "SBM")
       || (bankOnly === "mcb-only" && txn.bankName === "MCB");
@@ -1220,7 +1092,6 @@ function renderAll() {
   renderQuickFilterChips();
   renderActiveFilterSummary();
   renderMetrics();
-  renderCategoryReview();
   renderTransactionsTable();
   renderMonthlySummary();
   renderTrendInsights();
@@ -1375,68 +1246,6 @@ function renderMetrics() {
   els.metricsLastImport.textContent = latestImport ? `Last import: ${formatDateTime(latestImport.importedAt)}` : "Last import: none";
 }
 
-function renderCategoryReview() {
-  const context = buildCategorizationContext(state.transactions);
-  const reviewRows = collectCategoryReviewRows(context);
-  const reviewedCount = Object.keys(state.categoryAssignments).length + state.categoryRules.length;
-  const highConfidenceCount = state.transactions.filter((txn) => getCategorizationSuggestion(txn, context).confidence >= 0.9).length;
-
-  els.categoryReviewSummary.innerHTML = `
-    <article class="metric-tile">
-      <div class="metric-label">Pending Review</div>
-      <div class="metric-value">${escapeHtml(numberFormat(reviewRows.length))}</div>
-      <div class="metric-subtext">Low-confidence or first-seen merchants that deserve a quick pass.</div>
-    </article>
-    <article class="metric-tile">
-      <div class="metric-label">Learned Decisions</div>
-      <div class="metric-value">${escapeHtml(numberFormat(reviewedCount))}</div>
-      <div class="metric-subtext">One-off assignments plus saved merchant rules from the inbox.</div>
-    </article>
-    <article class="metric-tile">
-      <div class="metric-label">High Confidence</div>
-      <div class="metric-value">${escapeHtml(formatPercent(state.transactions.length ? (highConfidenceCount / state.transactions.length) * 100 : 0))}</div>
-      <div class="metric-subtext">Share of ledger rows categorized with strong confidence.</div>
-    </article>
-  `;
-
-  if (!reviewRows.length) {
-    els.categoryReviewList.innerHTML = `<div class="empty-state">No categorization review items are waiting right now. New or ambiguous merchants will appear here after import.</div>`;
-    return;
-  }
-
-  els.categoryReviewList.innerHTML = reviewRows.map((item) => {
-    const categoryOptions = CATEGORY_OPTIONS.map((option) => `
-      <option value="${escapeHtml(option)}" ${option === item.suggestion.category ? "selected" : ""}>${escapeHtml(option)}</option>
-    `).join("");
-    return `
-      <article class="review-card">
-        <div class="review-card-head">
-          <div>
-            <div class="review-card-title">${escapeHtml(item.txn.description || "Untitled transaction")}</div>
-            <div class="review-card-meta">${escapeHtml(item.txn.txnDate)} · ${escapeHtml(item.txn.accountLabel)}</div>
-          </div>
-          <div class="review-head-tags">
-            ${renderConfidenceBadge(item.suggestion.confidence)}
-            ${renderCategoryPill(item.suggestion.category)}
-          </div>
-        </div>
-        <div class="review-card-copy">${escapeHtml(item.suggestion.reason)}</div>
-        <div class="review-card-foot">
-          <label class="review-select-wrap">
-            <span>Category</span>
-            <select data-review-category="${escapeHtml(item.txn.rowHash)}">${categoryOptions}</select>
-          </label>
-          <div class="review-actions">
-            <button class="btn btn-secondary" type="button" data-review-action="apply" data-row-hash="${escapeHtml(item.txn.rowHash)}">Apply Once</button>
-            <button class="btn btn-primary" type="button" data-review-action="rule" data-row-hash="${escapeHtml(item.txn.rowHash)}">Save Rule</button>
-            <button class="btn btn-ghost" type="button" data-review-action="dismiss" data-row-hash="${escapeHtml(item.txn.rowHash)}">Dismiss</button>
-          </div>
-        </div>
-      </article>
-    `;
-  }).join("");
-}
-
 function summarizeTransactions(transactions) {
   const accountSet = new Set();
   let totalDebit = 0;
@@ -1489,7 +1298,6 @@ function summarizeAccountBalances(transactions) {
 
 function renderTransactionsTable(options = {}) {
   const { preservePaginationPosition = false } = options;
-  const context = buildCategorizationContext(state.transactions);
   const previousPaginationTop = preservePaginationPosition && els.paginationBar
     ? els.paginationBar.getBoundingClientRect().top
     : null;
@@ -1521,12 +1329,7 @@ function renderTransactionsTable(options = {}) {
     <tr>
       <td>${escapeHtml(txn.txnDate)}</td>
       <td>${renderAccountBadge(txn.accountLabel)}</td>
-      <td>
-        <div class="transaction-main-copy">${escapeHtml(txn.description)}</div>
-        <div class="transaction-subcopy">
-          ${renderCategoryPill(getCategorizationSuggestion(txn, context).category)}
-        </div>
-      </td>
+      <td>${escapeHtml(txn.description)}</td>
       <td class="${txn.debit > 0 ? "amount-negative" : ""}">${moneyFormat(txn.debit)}</td>
       <td class="${txn.credit > 0 ? "amount-positive" : ""}">${moneyFormat(txn.credit)}</td>
       <td>${moneyFormat(txn.balance)}</td>
@@ -1716,7 +1519,6 @@ function renderTrendInsights() {
   const filtered = getChronologicalTransactions(state.filteredTransactions);
   const planningTransactions = getChronologicalTransactions(state.transactions);
   const planningYear = getPlanningYear();
-  const categoryContext = buildCategorizationContext(state.transactions);
   const categoryMap = new Map();
   const forecastMap = new Map();
 
@@ -1747,7 +1549,7 @@ function renderTrendInsights() {
 
   filtered.forEach((txn) => {
     if (toInsightAmount(txn.debit, txn.currency) > 0) {
-      const category = categorizeTransaction(txn, categoryContext);
+      const category = categorizeTransaction(txn);
       const categoryEntry = categoryMap.get(category) || { category, count: 0, total: 0 };
       categoryEntry.count += 1;
       categoryEntry.total += toInsightAmount(txn.debit, txn.currency);
@@ -1761,7 +1563,7 @@ function renderTrendInsights() {
       ...row,
       endOfYear: row.lastBalance,
     }));
-  const forecastPlan = buildForecastPlan(planningTransactions, baseForecastRows, planningYear, categoryContext);
+  const forecastPlan = buildForecastPlan(planningTransactions, baseForecastRows, planningYear);
   const forecastRows = baseForecastRows.map((row) => {
       const endOfYear = forecastPlan.accountEndBalances.get(row.accountLabel)
         ?? projectAccountYearEnd(row, planningTransactions, planningYear);
@@ -2101,7 +1903,7 @@ function projectAccountYearEnd(accountForecast, transactions, targetYear) {
   return accountForecast.lastBalance + projectedNet;
 }
 
-function buildForecastPlan(transactions, forecastRows, targetYear, categoryContext = buildCategorizationContext(transactions)) {
+function buildForecastPlan(transactions, forecastRows, targetYear) {
   if (!forecastRows.length) {
     return {
       futureMonthlyNetMap: new Map(),
@@ -2119,8 +1921,8 @@ function buildForecastPlan(transactions, forecastRows, targetYear, categoryConte
   const forecastStartMonth = latestYearDate ? Number(latestYearDate.slice(5, 7)) + 1 : currentMonth + 1;
   const futureMonthlyNetMap = new Map();
   const accountEndBalances = new Map(forecastRows.map((row) => [row.accountLabel, row.lastBalance]));
-  const recurringMonthlySpend = estimateRecurringMonthlySpend(transactions, categoryContext);
-  const spendShares = estimateSpendingAccountShares(transactions, forecastRows, categoryContext);
+  const recurringMonthlySpend = estimateRecurringMonthlySpend(transactions);
+  const spendShares = estimateSpendingAccountShares(transactions, forecastRows);
   const operatingBuffers = estimateOperatingBuffers(transactions, forecastRows, spendShares, recurringMonthlySpend);
   const incomeAccountLabel = pickForecastAccount(forecastRows, (row) => row.bankName === "MCB" && row.currency === "GBP");
   const sbmMurAccountLabel = pickForecastAccount(forecastRows, (row) => row.bankName === "SBM" && row.currency === "MUR");
@@ -2269,14 +2071,14 @@ function getCurrentTaxYearRange(today = getTodayDateString()) {
   };
 }
 
-function estimateRecurringMonthlySpend(transactions, categoryContext = buildCategorizationContext(transactions)) {
+function estimateRecurringMonthlySpend(transactions) {
   if (!transactions.length) return 0;
   const latestDate = transactions[transactions.length - 1].txnDate;
   const monthTotals = new Map();
 
   transactions.forEach((txn) => {
     if (toInsightAmount(txn.debit, txn.currency) <= 0) return;
-    const category = categorizeTransaction(txn, categoryContext);
+    const category = categorizeTransaction(txn);
     if (!FORECAST_SPEND_CATEGORIES.has(category)) return;
     const monthKey = txn.txnDate.slice(0, 7);
     monthTotals.set(monthKey, (monthTotals.get(monthKey) || 0) + toInsightAmount(txn.debit, txn.currency));
@@ -2306,13 +2108,13 @@ function estimateRecurringMonthlySpend(transactions, categoryContext = buildCate
   return Math.max(0, 0.5 * longTermBaseline + 0.3 * recentMedian + 0.2 * trendProjection);
 }
 
-function estimateSpendingAccountShares(transactions, forecastRows, categoryContext = buildCategorizationContext(transactions)) {
+function estimateSpendingAccountShares(transactions, forecastRows) {
   const spendByAccount = new Map();
   const spendAccounts = forecastRows.filter((row) => row.currency === "MUR" && (row.bankName === "MCB" || row.bankName === "SBM"));
 
   transactions.forEach((txn) => {
     if (toInsightAmount(txn.debit, txn.currency) <= 0) return;
-    const category = categorizeTransaction(txn, categoryContext);
+    const category = categorizeTransaction(txn);
     if (!FORECAST_SPEND_CATEGORIES.has(category)) return;
     if (!spendAccounts.some((row) => row.accountLabel === txn.accountLabel)) return;
     spendByAccount.set(txn.accountLabel, (spendByAccount.get(txn.accountLabel) || 0) + Number(txn.debit || 0));
@@ -2570,13 +2372,9 @@ async function resetLedgerData() {
   state.taxEntries = [];
   state.taxExpectedExpensesMode = AUTO_TAX_EXPENSES_MODE;
   state.taxExpectedExpenses = calculateSuggestedTaxExpectedExpenses(state.transactions);
-  state.categoryAssignments = {};
-  state.categoryRules = [];
-  state.reviewDismissals = [];
   state.currentPage = 1;
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
-  await persistCategoryState();
   await saveLedgerToDisk();
   renderAll();
   updateStatus("Ledger cleared.");
@@ -2986,16 +2784,6 @@ async function persistTaxExpectedExpenses() {
   }
 }
 
-async function persistCategoryState() {
-  try {
-    await setSetting(CATEGORY_ASSIGNMENTS_KEY, state.categoryAssignments);
-    await setSetting(CATEGORY_RULES_KEY, state.categoryRules);
-    await setSetting(REVIEW_DISMISSALS_KEY, state.reviewDismissals);
-  } catch (error) {
-    logMessage(`Could not save categorization state: ${error.message}`);
-  }
-}
-
 function updateStatus(text) {
   els.importStatus.textContent = text;
 }
@@ -3107,211 +2895,82 @@ function formatMonthShort(value) {
   });
 }
 
-function normalizeCategoryAssignments(input) {
-  if (!input || typeof input !== "object") {
-    return {};
-  }
-  return Object.fromEntries(
-    Object.entries(input)
-      .filter(([key, value]) => key && CATEGORY_OPTIONS.includes(String(value || "")))
-      .map(([key, value]) => [key, String(value)])
-  );
-}
-
-function normalizeCategoryRule(rule) {
-  return {
-    id: String(rule?.id || simpleHash(`${rule?.merchantKey || ""}||${rule?.category || ""}`)),
-    merchantKey: String(rule?.merchantKey || "").trim(),
-    category: CATEGORY_OPTIONS.includes(String(rule?.category || "")) ? String(rule.category) : "Other",
-    createdAt: String(rule?.createdAt || new Date().toISOString()),
-  };
-}
-
-function buildCategorizationContext(transactions) {
-  const merchantCategoryMap = new Map();
-  const ruleMap = new Map(
-    state.categoryRules
-      .map(normalizeCategoryRule)
-      .filter((rule) => rule.merchantKey)
-      .map((rule) => [rule.merchantKey, rule])
-  );
-
-  transactions.forEach((txn) => {
-    const merchantKey = extractMerchantKey(txn);
-    if (!merchantKey) return;
-
-    const explicitCategory = state.categoryAssignments[txn.rowHash] || ruleMap.get(merchantKey)?.category || "";
-    if (!explicitCategory) return;
-
-    const bucket = merchantCategoryMap.get(merchantKey) || { total: 0, categories: new Map() };
-    bucket.total += 1;
-    bucket.categories.set(explicitCategory, (bucket.categories.get(explicitCategory) || 0) + 1);
-    merchantCategoryMap.set(merchantKey, bucket);
-  });
-
-  return { merchantCategoryMap, ruleMap };
-}
-
-function extractMerchantKey(txn) {
-  const raw = `${txn?.description || ""} ${txn?.reference || ""}`.toUpperCase();
-  const collapsed = raw
-    .replace(/\b\d+\b/g, " ")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .replace(/\b(POS|ATM|CASA|ACCOUNT|TRANSFER|PAYMENT|PAY|REF|ON|US|TO|FROM|VIA|DEBIT|CREDIT)\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const tokens = collapsed.split(" ").filter((token) => token.length > 2);
-  return tokens.slice(0, 4).join(" ");
-}
-
-function getBaseCategorySuggestion(txn) {
-  const text = `${txn?.description || ""} ${txn?.reference || ""}`.toUpperCase();
+function categorizeTransaction(txn) {
+  const description = txn?.description || "";
+  const reference = txn?.reference || "";
+  const text = `${description} ${reference}`.toUpperCase();
   if (isSqliSalaryTransfer(txn)) {
-    return { category: "Salary", confidence: 0.98, reason: "Matched your recurring SQLI salary transfer pattern.", source: "salary-pattern" };
+    return "Salary";
   }
-  if (txn?.credit > 0 && /(SALARY|PAYROLL|WAGE|REMUNERATION)/.test(text)) {
-    return { category: "Salary", confidence: 0.96, reason: "Matched salary wording on an incoming credit.", source: "salary-pattern" };
+  const patterns = [
+    ["DELIVOO", "Food Delivery"],
+    ["KOON PO YUEN", "Dining / Restaurants"],
+    ["HOT & POT", "Dining / Restaurants"],
+    ["KENTUCKY FRIED CHICKEN", "Dining / Restaurants"],
+    ["K.F.C", "Dining / Restaurants"],
+    ["BLUE JUICE", "Dining / Restaurants"],
+    ["NINE DRAGONS", "Dining / Restaurants"],
+    ["STEERS", "Dining / Restaurants"],
+    ["LITTLE ITA", "Dining / Restaurants"],
+    ["LITTLE KING", "Dining / Restaurants"],
+    ["MOVIE STORE", "Dining / Restaurants"],
+    ["JANGO S CAFE", "Dining / Restaurants"],
+    ["CHILLAX", "Dining / Restaurants"],
+    ["SEN & KEN", "Dining / Restaurants"],
+    ["DEBONNAIRS", "Dining / Restaurants"],
+    ["RATATOUILLE", "Dining / Restaurants"],
+    ["RESTOWAY", "Dining / Restaurants"],
+    ["ARTISAN COFFEE", "Dining / Restaurants"],
+    ["EL MONDO", "Dining / Restaurants"],
+    ["NANDO'S", "Dining / Restaurants"],
+    ["SCOTT", "Shopping"],
+    ["WINNERS", "Shopping"],
+    ["PRICE GURU", "Shopping"],
+    ["ONEOONE MULTIMEDIA", "Shopping"],
+    ["PIONEER MARKETING&TRADING", "Shopping"],
+    ["INTERMART", "Groceries"],
+    ["EBENE PHARMACY", "Pharmacy / Medical"],
+    ["MEDACTIV", "Pharmacy / Medical"],
+    ["PHARMACIE ST JEAN", "Pharmacy / Medical"],
+    ["GALIEN PHARMACY", "Pharmacy / Medical"],
+    ["SMS TOPUP", "Mobile / Telecom"],
+    ["SMS TOP UP", "Mobile / Telecom"],
+    ["EBANKING TOPUP", "Mobile / Telecom"],
+    ["TELECOM", "Mobile / Telecom"],
+    ["ICMARKET", "Trading / Broker"],
+    ["MQL5", "Trading / Broker"],
+    ["ICM PAY", "Trading / Broker"],
+    ["IC MARKET", "Trading / Broker"],
+    ["ZULU REPAY", "Trading / Broker"],
+    ["MT4 REPAY", "Trading / Broker"],
+    ["MISSING MT4", "Trading / Broker"],
+    ["MRA", "Taxes / Government"],
+    ["CSG", "Taxes / Government"],
+    ["STATEINSURANCE", "Insurance"],
+    ["LAPRUDENCE", "Insurance"],
+    ["CREDIT INTEREST", "Interest"],
+    ["VISA CARD PAYMENT", "Card Repayment"],
+    ["ATM CASH WITHDRAWAL", "Cash Withdrawal"],
+    ["ATM WITHDRAWAL", "Cash Withdrawal"],
+    ["CASH WITHDRAWAL", "Cash Withdrawal"],
+    ["SI EXECUTION CHARGE", "Bank Fees"],
+    ["SI SC DR", "Bank Fees"],
+    ["CHARGE AC-", "Bank Fees"],
+    ["PAYPAL CHARGES", "Bank Fees"],
+    ["INWARD TRANSFER", "Transfers In"],
+    ["GBP TO SBM", "Transfers Between Own Accounts"],
+    ["MCB TO SBM", "Transfers Between Own Accounts"],
+    ["JUICE ACCOUNT TRANSFER", "Transfers"],
+    ["JUICE TRANSFER", "Transfers"],
+    ["BILL REFUND TO -", "Transfers"],
+    ["BILL REFUND TO /", "Transfers"],
+    ["LENDING TO -", "Transfers"],
+    ["REFUND/", "Transfers"],
+  ];
+  for (const [needle, label] of patterns) {
+    if (text.includes(needle)) return label;
   }
-  const match = CATEGORY_PATTERNS.find((item) => text.includes(item.needle));
-  if (match) {
-    return {
-      category: match.label,
-      confidence: match.confidence,
-      reason: match.reason,
-      source: "keyword-pattern",
-    };
-  }
-  return {
-    category: "Other",
-    confidence: 0.28,
-    reason: "No saved rule or strong merchant pattern matched this transaction yet.",
-    source: "fallback",
-  };
-}
-
-function getCategorizationSuggestion(txn, context = buildCategorizationContext(state.transactions)) {
-  const assignedCategory = state.categoryAssignments[txn.rowHash];
-  if (assignedCategory) {
-    return {
-      category: assignedCategory,
-      confidence: 1,
-      reason: "Reviewed manually in the inbox.",
-      source: "manual-assignment",
-      merchantKey: extractMerchantKey(txn),
-      needsReview: false,
-    };
-  }
-
-  const merchantKey = extractMerchantKey(txn);
-  const savedRule = merchantKey ? context.ruleMap.get(merchantKey) : null;
-  if (savedRule) {
-    return {
-      category: savedRule.category,
-      confidence: 0.99,
-      reason: "Matched a saved merchant rule from a previous review.",
-      source: "saved-rule",
-      merchantKey,
-      needsReview: false,
-    };
-  }
-
-  const history = merchantKey ? context.merchantCategoryMap.get(merchantKey) : null;
-  if (history && history.total >= 2) {
-    const best = Array.from(history.categories.entries()).sort((a, b) => b[1] - a[1])[0];
-    const share = best[1] / history.total;
-    if (best && share >= 0.7) {
-      const confidence = Math.min(0.95, 0.62 + share * 0.2 + Math.min(0.13, history.total * 0.03));
-      return {
-        category: best[0],
-        confidence,
-        reason: `Matched ${best[1]} of ${history.total} reviewed transactions from the same merchant pattern.`,
-        source: "historical-pattern",
-        merchantKey,
-        needsReview: confidence < 0.84 || history.total < 4,
-      };
-    }
-  }
-
-  const base = getBaseCategorySuggestion(txn);
-  return {
-    ...base,
-    merchantKey,
-    needsReview: base.confidence < 0.78 || base.category === "Other",
-  };
-}
-
-function categorizeTransaction(txn, context = buildCategorizationContext(state.transactions)) {
-  return getCategorizationSuggestion(txn, context).category;
-}
-
-function collectCategoryReviewRows(context = buildCategorizationContext(state.transactions)) {
-  const dismissed = new Set(state.reviewDismissals.map(String));
-  return getChronologicalTransactions(state.transactions)
-    .map((txn) => ({ txn, suggestion: getCategorizationSuggestion(txn, context) }))
-    .filter((item) => item.suggestion.needsReview && !dismissed.has(item.txn.rowHash))
-    .sort((a, b) => (
-      a.suggestion.confidence - b.suggestion.confidence
-      || b.txn.txnDate.localeCompare(a.txn.txnDate)
-    ))
-    .slice(0, CATEGORY_REVIEW_LIMIT);
-}
-
-function renderCategoryPill(category) {
-  return `<span class="category-pill">${escapeHtml(category)}</span>`;
-}
-
-function renderConfidenceBadge(confidence) {
-  const tone = confidence >= 0.9 ? "high" : confidence >= 0.75 ? "medium" : "low";
-  return `<span class="confidence-badge ${tone}">${escapeHtml(formatPercent(confidence * 100))} confidence</span>`;
-}
-
-async function handleCategoryReviewClick(event) {
-  const trigger = event.target.closest("[data-review-action]");
-  if (!trigger) {
-    return;
-  }
-
-  const rowHash = String(trigger.getAttribute("data-row-hash") || "");
-  const action = String(trigger.getAttribute("data-review-action") || "");
-  const txn = state.transactions.find((item) => item.rowHash === rowHash);
-  if (!txn || !rowHash) {
-    return;
-  }
-
-  const select = els.categoryReviewList.querySelector(`[data-review-category="${rowHash}"]`);
-  const category = select instanceof HTMLSelectElement && CATEGORY_OPTIONS.includes(select.value) ? select.value : "Other";
-  if (action === "dismiss") {
-    if (!state.reviewDismissals.includes(rowHash)) {
-      state.reviewDismissals = [...state.reviewDismissals, rowHash];
-    }
-    await persistCategoryState();
-    renderAll();
-    return;
-  }
-
-  state.categoryAssignments = {
-    ...state.categoryAssignments,
-    [rowHash]: category,
-  };
-  state.reviewDismissals = state.reviewDismissals.filter((value) => value !== rowHash);
-
-  if (action === "rule") {
-    const merchantKey = extractMerchantKey(txn);
-    if (merchantKey) {
-      state.categoryRules = [
-        ...state.categoryRules.filter((rule) => rule.merchantKey !== merchantKey),
-        normalizeCategoryRule({
-          id: simpleHash(`${merchantKey}||${category}`),
-          merchantKey,
-          category,
-          createdAt: new Date().toISOString(),
-        }),
-      ];
-    }
-  }
-
-  await persistCategoryState();
-  renderAll();
+  return "Other";
 }
 
 function isSalaryTransaction(txn) {
@@ -3320,13 +2979,13 @@ function isSalaryTransaction(txn) {
   return txn.credit > 0 && (hasSalaryKeyword || isSqliSalaryTransfer(txn));
 }
 
-function isTradingTransaction(txn, categoryContext = buildCategorizationContext(state.transactions)) {
-  return categorizeTransaction(txn, categoryContext) === "Trading / Broker";
+function isTradingTransaction(txn) {
+  return categorizeTransaction(txn) === "Trading / Broker";
 }
 
-function isTransferTransaction(txn, categoryContext = buildCategorizationContext(state.transactions)) {
+function isTransferTransaction(txn) {
   if (isSqliSalaryTransfer(txn)) return false;
-  const category = categorizeTransaction(txn, categoryContext);
+  const category = categorizeTransaction(txn);
   if (category.startsWith("Transfers")) return true;
   const text = `${txn.description || ""} ${txn.reference || ""}`.toUpperCase();
   return text.includes("TRANSFER");

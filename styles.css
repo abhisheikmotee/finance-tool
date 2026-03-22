@@ -361,7 +361,6 @@ h3 {
 }
 
 .metrics-card,
-.review-card-shell,
 .trends-card,
 .filters-card,
 .insights-card,
@@ -498,124 +497,6 @@ h3 {
 
 .trend-grid {
   margin-bottom: 14px;
-}
-
-.review-metrics {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-bottom: 16px;
-}
-
-.review-list {
-  display: grid;
-  gap: 12px;
-}
-
-.review-card {
-  padding: 18px;
-  border-radius: 22px;
-  border: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 247, 245, 0.88));
-}
-
-.review-card-head,
-.review-card-foot,
-.review-actions,
-.review-head-tags {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.review-card-head,
-.review-card-foot {
-  align-items: center;
-  justify-content: space-between;
-}
-
-.review-card-title {
-  font-family: "Space Grotesk", sans-serif;
-  font-size: 1.02rem;
-  font-weight: 700;
-  color: #12231b;
-}
-
-.review-card-meta,
-.review-card-copy,
-.review-select-wrap span,
-.transaction-subcopy {
-  color: var(--muted-soft);
-}
-
-.review-card-meta {
-  margin-top: 6px;
-  font-size: 0.86rem;
-}
-
-.review-card-copy {
-  margin: 12px 0 14px;
-  line-height: 1.45;
-}
-
-.review-select-wrap {
-  display: grid;
-  gap: 6px;
-  min-width: min(220px, 100%);
-}
-
-.review-select-wrap span {
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.review-select-wrap select {
-  min-height: 40px;
-  padding: 8px 12px;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.9);
-  font: inherit;
-}
-
-.confidence-badge,
-.category-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 800;
-}
-
-.confidence-badge.high {
-  background: rgba(15, 118, 110, 0.12);
-  color: var(--primary-strong);
-}
-
-.confidence-badge.medium {
-  background: rgba(214, 168, 79, 0.16);
-  color: #8c6220;
-}
-
-.confidence-badge.low {
-  background: rgba(163, 51, 61, 0.12);
-  color: var(--danger);
-}
-
-.category-pill {
-  background: rgba(16, 33, 25, 0.06);
-  color: #30423a;
-}
-
-.transaction-main-copy {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.transaction-subcopy {
-  margin-top: 8px;
 }
 
 .metric-tile {
@@ -1689,10 +1570,6 @@ tbody tr:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .review-metrics {
-    grid-template-columns: 1fr;
-  }
-
   .filters-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1743,14 +1620,6 @@ tbody tr:hover {
 
   .metrics-grid {
     grid-template-columns: 1fr;
-  }
-
-  .review-card-foot {
-    align-items: stretch;
-  }
-
-  .review-actions {
-    width: 100%;
   }
 
   .metric-tile-inline .metric-tile-body {
