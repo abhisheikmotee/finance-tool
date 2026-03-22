@@ -505,6 +505,32 @@ h3 {
   margin-bottom: 16px;
 }
 
+.review-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.review-note {
+  padding: 9px 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--line);
+  color: var(--muted-soft);
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.review-note.is-active {
+  color: var(--primary-strong);
+}
+
+.review-note.is-unavailable {
+  color: var(--danger);
+}
+
 .review-list {
   display: grid;
   gap: 12px;
@@ -579,7 +605,8 @@ h3 {
 }
 
 .confidence-badge,
-.category-pill {
+.category-pill,
+.source-badge {
   display: inline-flex;
   align-items: center;
   min-height: 28px;
@@ -604,6 +631,11 @@ h3 {
   color: var(--danger);
 }
 
+.source-badge {
+  background: rgba(15, 118, 110, 0.08);
+  color: var(--primary-strong);
+}
+
 .category-pill {
   background: rgba(16, 33, 25, 0.06);
   color: #30423a;
@@ -616,6 +648,13 @@ h3 {
 
 .transaction-subcopy {
   margin-top: 8px;
+}
+
+.review-inline-note {
+  margin: -4px 0 14px;
+  color: var(--muted-soft);
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
 .metric-tile {
@@ -1751,6 +1790,11 @@ tbody tr:hover {
 
   .review-actions {
     width: 100%;
+  }
+
+  .review-toolbar {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .metric-tile-inline .metric-tile-body {

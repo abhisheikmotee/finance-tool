@@ -204,6 +204,15 @@ const state = {
   categoryAssignments: {},
   categoryRules: [],
   reviewDismissals: [],
+  ai: {
+    available: false,
+    checked: false,
+    loading: false,
+    message: "Checking AI status...",
+    model: "",
+  },
+  aiSuggestions: {},
+  pendingAiRowHashes: [],
   currentPage: 1,
   pageSize: 10,
   ledgerHandle: null,
@@ -233,6 +242,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await restoreExchangeRate();
   await restoreTaxEntries();
   await restoreCategorizationState();
+  await initializeAiCategorization();
   await refreshExchangeRate();
   applyFilters();
   renderAll();
@@ -258,6 +268,8 @@ function cacheElements() {
   els.trendMetricsGrid = document.getElementById("trend-metrics-grid");
   els.categoryReviewSummary = document.getElementById("category-review-summary");
   els.categoryReviewList = document.getElementById("category-review-list");
+  els.categoryReviewNote = document.getElementById("category-review-note");
+  els.refreshAiReviewBtn = document.getElementById("refresh-ai-review-btn");
   els.searchInput = document.getElementById("search-input");
   els.accountFilter = document.getElementById("account-filter");
   els.quickFilterChips = document.getElementById("quick-filter-chips");
@@ -378,6 +390,9 @@ function bindEvents() {
   els.taxBody.addEventListener("click", handleTaxTableClick);
   els.taxSummaryBody.addEventListener("change", handleTaxSummaryInput);
   els.categoryReviewList.addEventListener("click", handleCategoryReviewClick);
+  els.refreshAiReviewBtn.addEventListener("click", () => {
+    refreshAiSuggestions(true);
+  });
 }
 
 function onFilterChange() {
@@ -604,6 +619,116 @@ async function restoreCategorizationState() {
   }
 }
 
+async function initializeAiCategorization() {
+  try {
+    const response = await fetch("/api/ai-status", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    state.ai.available = Boolean(data.available);
+    state.ai.checked = true;
+    state.ai.model = String(data.model || "");
+    state.ai.message = String(data.message || (state.ai.available ? "AI categorization is ready." : "AI categorization is unavailable."));
+  } catch (error) {
+    state.ai.available = false;
+    state.ai.checked = true;
+    state.ai.model = "";
+    state.ai.message = `Could not reach the AI service: ${error.message}`;
+  }
+}
+
+async function refreshAiSuggestions(force = false) {
+  if (!state.ai.available || state.ai.loading) {
+    renderCategoryReview();
+    return;
+  }
+
+  const context = buildCategorizationContext(state.transactions);
+  const reviewRows = collectCategoryReviewRows(context);
+  const rowsToFetch = reviewRows.filter((item) => {
+    if (state.pendingAiRowHashes.includes(item.txn.rowHash)) {
+      return false;
+    }
+    if (!force && state.aiSuggestions[item.txn.rowHash]) {
+      return false;
+    }
+    return true;
+  });
+
+  if (!rowsToFetch.length) {
+    renderCategoryReview();
+    return;
+  }
+
+  state.ai.loading = true;
+  state.pendingAiRowHashes = [...new Set([...state.pendingAiRowHashes, ...rowsToFetch.map((item) => item.txn.rowHash)])];
+  renderCategoryReview();
+
+  try {
+    const response = await fetch("/api/categorize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        allowedCategories: CATEGORY_OPTIONS,
+        transactions: rowsToFetch.map((item) => ({
+          rowHash: item.txn.rowHash,
+          description: item.txn.description,
+          reference: item.txn.reference,
+          debit: item.txn.debit,
+          credit: item.txn.credit,
+          accountLabel: item.txn.accountLabel,
+          accountCurrency: item.txn.currency,
+          localSuggestion: {
+            category: item.suggestion.category,
+            confidence: item.suggestion.confidence,
+            reason: item.suggestion.reason,
+          },
+          merchantKey: item.suggestion.merchantKey || extractMerchantKey(item.txn),
+          merchantHistory: buildAiMerchantHistory(item.txn, context),
+        })),
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error || data?.message || `HTTP ${response.status}`);
+    }
+
+    const nextSuggestions = {};
+    (data.suggestions || []).forEach((item) => {
+      if (!item?.rowHash) return;
+      nextSuggestions[item.rowHash] = {
+        category: CATEGORY_OPTIONS.includes(item.category) ? item.category : "Other",
+        confidence: clampConfidence(item.confidence),
+        reason: String(item.reason || "AI suggested this category."),
+        merchantKey: String(item.merchantKey || ""),
+        needsReview: Boolean(item.shouldReview),
+        source: "llm",
+      };
+    });
+
+    state.aiSuggestions = {
+      ...state.aiSuggestions,
+      ...nextSuggestions,
+    };
+    state.ai.model = String(data.model || state.ai.model || "");
+    state.ai.message = state.ai.model
+      ? `AI suggestions powered by ${state.ai.model}. Review before saving rules.`
+      : "AI suggestions are ready. Review before saving rules.";
+  } catch (error) {
+    state.ai.available = false;
+    state.ai.message = `AI suggestions are unavailable right now: ${error.message}`;
+  } finally {
+    state.ai.loading = false;
+    state.pendingAiRowHashes = state.pendingAiRowHashes.filter((rowHash) => !rowsToFetch.some((item) => item.txn.rowHash === rowHash));
+    renderCategoryReview();
+  }
+}
+
 async function refreshExchangeRate() {
   try {
     const response = await fetch(GBP_TO_MUR_API_URL, { cache: "no-store" });
@@ -647,6 +772,8 @@ async function createNewLedger() {
   state.categoryAssignments = {};
   state.categoryRules = [];
   state.reviewDismissals = [];
+  state.aiSuggestions = {};
+  state.pendingAiRowHashes = [];
   state.currentPage = 1;
   state.ledgerHandle = null;
   state.ledgerName = "finance-ledger.json";
@@ -704,6 +831,8 @@ async function loadLedgerFromHandle(handle, storeHandle = false) {
   state.categoryAssignments = normalizeCategoryAssignments(data.categoryAssignments);
   state.categoryRules = Array.isArray(data.categoryRules) ? data.categoryRules.map(normalizeCategoryRule) : [];
   state.reviewDismissals = Array.isArray(data.reviewDismissals) ? data.reviewDismissals.map(String) : [];
+  state.aiSuggestions = {};
+  state.pendingAiRowHashes = [];
   state.taxExpectedExpensesMode = data.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE
     ? MANUAL_TAX_EXPENSES_MODE
     : AUTO_TAX_EXPENSES_MODE;
@@ -733,6 +862,8 @@ async function loadLedgerFromFile(file) {
   state.categoryAssignments = normalizeCategoryAssignments(data.categoryAssignments);
   state.categoryRules = Array.isArray(data.categoryRules) ? data.categoryRules.map(normalizeCategoryRule) : [];
   state.reviewDismissals = Array.isArray(data.reviewDismissals) ? data.reviewDismissals.map(String) : [];
+  state.aiSuggestions = {};
+  state.pendingAiRowHashes = [];
   state.taxExpectedExpensesMode = data.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE
     ? MANUAL_TAX_EXPENSES_MODE
     : AUTO_TAX_EXPENSES_MODE;
@@ -1380,6 +1511,14 @@ function renderCategoryReview() {
   const reviewRows = collectCategoryReviewRows(context);
   const reviewedCount = Object.keys(state.categoryAssignments).length + state.categoryRules.length;
   const highConfidenceCount = state.transactions.filter((txn) => getCategorizationSuggestion(txn, context).confidence >= 0.9).length;
+  const aiLabel = state.ai.loading
+    ? "Loading AI suggestions..."
+    : state.ai.message;
+
+  els.categoryReviewNote.textContent = aiLabel;
+  els.categoryReviewNote.classList.toggle("is-unavailable", state.ai.checked && !state.ai.available);
+  els.categoryReviewNote.classList.toggle("is-active", state.ai.available);
+  els.refreshAiReviewBtn.disabled = state.ai.loading || !state.ai.checked;
 
   els.categoryReviewSummary.innerHTML = `
     <article class="metric-tile">
@@ -1405,8 +1544,11 @@ function renderCategoryReview() {
   }
 
   els.categoryReviewList.innerHTML = reviewRows.map((item) => {
+    const aiSuggestion = state.aiSuggestions[item.txn.rowHash];
+    const displayedSuggestion = aiSuggestion || item.suggestion;
+    const isPending = state.pendingAiRowHashes.includes(item.txn.rowHash);
     const categoryOptions = CATEGORY_OPTIONS.map((option) => `
-      <option value="${escapeHtml(option)}" ${option === item.suggestion.category ? "selected" : ""}>${escapeHtml(option)}</option>
+      <option value="${escapeHtml(option)}" ${option === displayedSuggestion.category ? "selected" : ""}>${escapeHtml(option)}</option>
     `).join("");
     return `
       <article class="review-card">
@@ -1416,11 +1558,13 @@ function renderCategoryReview() {
             <div class="review-card-meta">${escapeHtml(item.txn.txnDate)} · ${escapeHtml(item.txn.accountLabel)}</div>
           </div>
           <div class="review-head-tags">
-            ${renderConfidenceBadge(item.suggestion.confidence)}
-            ${renderCategoryPill(item.suggestion.category)}
+            ${renderSuggestionSourceBadge(aiSuggestion ? "AI" : "Rules")}
+            ${renderConfidenceBadge(displayedSuggestion.confidence)}
+            ${renderCategoryPill(displayedSuggestion.category)}
           </div>
         </div>
-        <div class="review-card-copy">${escapeHtml(item.suggestion.reason)}</div>
+        <div class="review-card-copy">${escapeHtml(displayedSuggestion.reason)}</div>
+        ${isPending ? `<div class="review-inline-note">Fetching an AI suggestion for this merchant...</div>` : ""}
         <div class="review-card-foot">
           <label class="review-select-wrap">
             <span>Category</span>
@@ -1435,6 +1579,12 @@ function renderCategoryReview() {
       </article>
     `;
   }).join("");
+
+  if (state.ai.available && !state.ai.loading) {
+    queueMicrotask(() => {
+      refreshAiSuggestions(false);
+    });
+  }
 }
 
 function summarizeTransactions(transactions) {
@@ -2573,6 +2723,8 @@ async function resetLedgerData() {
   state.categoryAssignments = {};
   state.categoryRules = [];
   state.reviewDismissals = [];
+  state.aiSuggestions = {};
+  state.pendingAiRowHashes = [];
   state.currentPage = 1;
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
@@ -3260,9 +3412,37 @@ function renderCategoryPill(category) {
   return `<span class="category-pill">${escapeHtml(category)}</span>`;
 }
 
+function renderSuggestionSourceBadge(label) {
+  return `<span class="source-badge">${escapeHtml(label)}</span>`;
+}
+
 function renderConfidenceBadge(confidence) {
   const tone = confidence >= 0.9 ? "high" : confidence >= 0.75 ? "medium" : "low";
   return `<span class="confidence-badge ${tone}">${escapeHtml(formatPercent(confidence * 100))} confidence</span>`;
+}
+
+function buildAiMerchantHistory(txn, context = buildCategorizationContext(state.transactions)) {
+  const merchantKey = extractMerchantKey(txn);
+  if (!merchantKey) {
+    return [];
+  }
+
+  const history = context.merchantCategoryMap.get(merchantKey);
+  if (!history) {
+    return [];
+  }
+
+  return Array.from(history.categories.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, count]) => ({ category, count }));
+}
+
+function clampConfidence(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 0.5;
+  }
+  return Math.max(0, Math.min(1, numeric));
 }
 
 async function handleCategoryReviewClick(event) {
