@@ -582,8 +582,6 @@ h3 {
 }
 
 .metric-tile {
-  position: relative;
-  isolation: isolate;
   padding: 18px;
   border-radius: 22px;
   background:
@@ -595,21 +593,6 @@ h3 {
   box-shadow: var(--inner-highlight), var(--glass-edge);
   backdrop-filter: blur(24px) saturate(170%);
   -webkit-backdrop-filter: blur(24px) saturate(170%);
-}
-
-.metric-tile::after {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: 21px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(239, 248, 252, 0.16));
-  pointer-events: none;
-  z-index: 0;
-}
-
-.metric-tile > * {
-  position: relative;
-  z-index: 1;
 }
 
 .metric-tile:hover {
@@ -631,7 +614,7 @@ h3 {
 }
 
 .metric-label {
-  color: #3f5965;
+  color: #4e6772;
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -647,7 +630,7 @@ h3 {
 
 .metric-subtext {
   margin-top: 8px;
-  color: #435d68;
+  color: #4f6873;
   max-width: 26ch;
   font-size: 0.88rem;
   line-height: 1.4;
@@ -655,7 +638,7 @@ h3 {
 
 .metric-detail {
   margin-top: 6px;
-  color: rgba(52, 75, 85, 0.92);
+  color: rgba(63, 88, 99, 0.9);
   font-size: 0.8rem;
   line-height: 1.35;
 }
@@ -1103,8 +1086,6 @@ tbody tr:hover {
 }
 
 .tax-summary-card {
-  position: relative;
-  isolation: isolate;
   padding: 18px;
   border-radius: 22px;
   border: 1px solid var(--line);
@@ -1117,21 +1098,6 @@ tbody tr:hover {
   -webkit-backdrop-filter: blur(26px) saturate(170%);
 }
 
-.tax-summary-card::after {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: 21px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(241, 249, 252, 0.18));
-  pointer-events: none;
-  z-index: 0;
-}
-
-.tax-summary-card > * {
-  position: relative;
-  z-index: 1;
-}
-
 .tax-summary-card.current {
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.86), transparent 28%),
@@ -1141,7 +1107,7 @@ tbody tr:hover {
 
 .tax-summary-kicker {
   margin: 0;
-  color: #47616d;
+  color: var(--muted-soft);
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -1158,14 +1124,12 @@ tbody tr:hover {
 
 .tax-summary-card-copy {
   margin-top: 10px;
-  color: #435d68;
+  color: var(--muted-soft);
   font-size: 0.92rem;
   line-height: 1.45;
 }
 
 .tax-expense-editor {
-  position: relative;
-  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
   gap: 16px;
@@ -1177,21 +1141,6 @@ tbody tr:hover {
   box-shadow: var(--inner-highlight), var(--glass-edge);
   backdrop-filter: blur(24px) saturate(170%);
   -webkit-backdrop-filter: blur(24px) saturate(170%);
-}
-
-.tax-expense-editor::after {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: 21px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(241, 249, 252, 0.2));
-  pointer-events: none;
-  z-index: 0;
-}
-
-.tax-expense-editor > * {
-  position: relative;
-  z-index: 1;
 }
 
 .tax-expense-title {
@@ -1210,14 +1159,14 @@ tbody tr:hover {
 
 .tax-expense-copy {
   margin-top: 6px;
-  color: #415a66;
+  color: var(--muted-soft);
   font-size: 0.92rem;
   line-height: 1.45;
 }
 
 .tax-expense-note {
   margin-top: 8px;
-  color: rgba(52, 75, 85, 0.9);
+  color: rgba(77, 95, 84, 0.78);
   font-size: 0.82rem;
   line-height: 1.45;
 }
@@ -1251,7 +1200,7 @@ tbody tr:hover {
 }
 
 .tax-expense-input-wrap label {
-  color: #48626e;
+  color: var(--muted-soft);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -1426,7 +1375,7 @@ tbody tr:hover {
 .table-panel-copy {
   margin-top: 8px;
   max-width: 52ch;
-  color: rgba(49, 72, 82, 0.92);
+  color: rgba(60, 83, 93, 0.9);
   font-size: 0.84rem;
   line-height: 1.5;
 }
@@ -1577,7 +1526,7 @@ tbody tr:hover {
 .trendline-summary {
   margin: 0;
   max-width: 680px;
-  color: #425c68;
+  color: #48626e;
   line-height: 1.5;
 }
 
