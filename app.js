@@ -1699,7 +1699,7 @@ function renderCategoryBars(rows) {
 
 function buildYearlyProjection(transactions, totalCurrentBalance = 0, projectedClosingBalance = 0, forecastPlan = null, targetYear = getPlanningYear()) {
   const yearTransactions = transactions.filter((txn) => txn.txnDate.startsWith(`${targetYear}-`));
-  const latestDate = yearTransactions.length ? yearTransactions[yearTransactions.length - 1].txnDate : "";
+  const latestDate = getLatestTransactionDate(yearTransactions);
   const lastMonthIndex = latestDate ? Number(latestDate.slice(5, 7)) : 0;
   const todayMonthIndex = Number(getTodayDateString().slice(5, 7));
   const monthsElapsed = Math.max(lastMonthIndex, 0);
@@ -1848,7 +1848,9 @@ function renderTrendlineChart(projection) {
     ${projection.projectionSeries.length ? `<path class="trend-projection" d="${projectionPath}"></path>` : ""}
     ${allPoints.map((point, index) => `
       <g>
-        <circle class="trend-point ${point.forecast ? "forecast" : ""}" cx="${xForIndex(index)}" cy="${yForValue(point.y)}" r="4.5"></circle>
+        <circle class="trend-point ${point.forecast ? "forecast" : ""}" cx="${xForIndex(index)}" cy="${yForValue(point.y)}" r="4.5">
+          <title>${escapeHtml(`${point.label} ${projection.year}: ${moneyFormat(point.y)}`)}</title>
+        </circle>
         <text class="trend-label" x="${xForIndex(index)}" y="${height - 18}" text-anchor="middle">${escapeHtml(point.label)}</text>
       </g>
     `).join("")}
@@ -1948,7 +1950,7 @@ function buildForecastPlan(transactions, forecastRows, targetYear) {
   }
 
   const yearTransactions = transactions.filter((txn) => txn.txnDate.startsWith(`${targetYear}-`));
-  const latestYearDate = yearTransactions.length ? yearTransactions[yearTransactions.length - 1].txnDate : "";
+  const latestYearDate = getLatestTransactionDate(yearTransactions);
   const currentMonth = Number(getTodayDateString().slice(5, 7));
   const forecastStartMonth = latestYearDate ? Number(latestYearDate.slice(5, 7)) + 1 : currentMonth + 1;
   const futureMonthlyNetMap = new Map();
@@ -2085,6 +2087,12 @@ function getChronologicalTransactions(transactions) {
   ));
 }
 
+function getLatestTransactionDate(transactions) {
+  return transactions.reduce((latestDate, txn) => (
+    txn.txnDate > latestDate ? txn.txnDate : latestDate
+  ), "");
+}
+
 function getPlanningYear() {
   return Number(getTodayDateString().slice(0, 4));
 }
@@ -2105,7 +2113,7 @@ function getCurrentTaxYearRange(today = getTodayDateString()) {
 
 function estimateRecurringMonthlySpend(transactions) {
   if (!transactions.length) return 0;
-  const latestDate = transactions[transactions.length - 1].txnDate;
+  const latestDate = getLatestTransactionDate(transactions);
   const monthTotals = new Map();
 
   transactions.forEach((txn) => {
