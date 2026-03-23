@@ -167,8 +167,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 function cacheElements() {
   els.fileInput = document.getElementById("file-input");
   els.ledgerFileInput = document.getElementById("ledger-file-input");
-  els.exportBtn = document.getElementById("export-btn");
-  els.resetBtn = document.getElementById("reset-btn");
   els.chooseLedgerBtn = document.getElementById("choose-ledger-btn");
   els.newLedgerBtn = document.getElementById("new-ledger-btn");
   els.saveLedgerBtn = document.getElementById("save-ledger-btn");
@@ -225,8 +223,6 @@ function bindEvents() {
     await importFiles(Array.from(event.target.files || []));
     event.target.value = "";
   });
-  els.exportBtn.addEventListener("click", exportTransactionsCsv);
-  els.resetBtn.addEventListener("click", resetLedgerData);
   els.toggleImportPanel.addEventListener("click", openImportPanel);
   els.closeImportPanel.addEventListener("click", closeImportPanel);
   els.importPanel.addEventListener("click", (event) => {

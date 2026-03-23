@@ -266,12 +266,15 @@ h3 {
 }
 
 .status-pill {
-  padding: 10px 16px;
+  padding: 4px 0;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(15, 118, 110, 0.1), rgba(15, 118, 110, 0.05));
+  background: transparent;
   color: var(--primary-strong);
-  font-size: 0.96rem;
+  font-size: 0.84rem;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.8;
 }
 
 .utility-groups {
