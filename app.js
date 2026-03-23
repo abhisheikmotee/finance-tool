@@ -9,6 +9,40 @@ const TAX_EXPECTED_EXPENSES_MODE_KEY = "taxExpectedExpensesMode";
 const DEFAULT_EXPECTED_EXPENSES = 2500000;
 const AUTO_TAX_EXPENSES_MODE = "auto";
 const MANUAL_TAX_EXPENSES_MODE = "manual";
+const DAILY_SALARY_RATE_GBP = 350;
+const MAURITIUS_PUBLIC_HOLIDAYS = {
+  2025: new Set([
+    "2025-01-01",
+    "2025-01-02",
+    "2025-02-01",
+    "2025-02-11",
+    "2025-02-26",
+    "2025-03-12",
+    "2025-03-30",
+    "2025-05-01",
+    "2025-08-28",
+    "2025-10-20",
+    "2025-10-21",
+    "2025-11-01",
+    "2025-12-25",
+  ]),
+  2026: new Set([
+    "2026-01-01",
+    "2026-01-02",
+    "2026-02-01",
+    "2026-02-15",
+    "2026-02-17",
+    "2026-03-12",
+    "2026-03-19",
+    "2026-03-21",
+    "2026-05-01",
+    "2026-08-15",
+    "2026-09-16",
+    "2026-11-02",
+    "2026-11-08",
+    "2026-12-25",
+  ]),
+};
 const FORECAST_SPEND_CATEGORIES = new Set([
   "Food Delivery",
   "Dining / Restaurants",
@@ -290,7 +324,7 @@ function bindEvents() {
   });
 
   els.addTaxRowBtn.addEventListener("click", async () => {
-    state.taxEntries.push(createEmptyTaxEntry());
+    state.taxEntries.push(createPrefilledTaxEntry());
     renderTaxTable();
     renderTaxSummary();
     await persistTaxEntries();
@@ -2598,6 +2632,28 @@ function createEmptyTaxEntry() {
   };
 }
 
+function createPrefilledTaxEntry() {
+  const previousEntry = getLastTaxEntry();
+  if (!previousEntry?.invoicedDate) {
+    return createEmptyTaxEntry();
+  }
+
+  const invoicedDate = getNextInvoiceWorkingDate(previousEntry.invoicedDate);
+  const nextRate = Number.isFinite(state.gbpToMurRate) ? formatTaxRate(state.gbpToMurRate) : "";
+  const amountReceivedGbp = invoicedDate
+    ? String(countWorkingDaysBetweenInvoices(previousEntry.invoicedDate, invoicedDate) * DAILY_SALARY_RATE_GBP)
+    : "";
+
+  return {
+    invoicedDate,
+    dateReceived: "",
+    dateCsgPaid: "",
+    exchangeRate: nextRate,
+    amountReceivedGbp,
+    csgPaymentReference: "",
+  };
+}
+
 function cloneDefaultTaxEntries() {
   return DEFAULT_TAX_ENTRIES.map((entry) => ({ ...entry }));
 }
@@ -2756,6 +2812,72 @@ function getEffectiveTaxReceiptDate(entry) {
   const invoiceDate = new Date(`${entry.invoicedDate}T00:00:00`);
   invoiceDate.setMonth(invoiceDate.getMonth() + 1);
   return invoiceDate.toISOString().slice(0, 10);
+}
+
+function getLastTaxEntry() {
+  return state.taxEntries.at(-1) || null;
+}
+
+function getNextInvoiceWorkingDate(previousInvoiceDate) {
+  const previousDate = parseDateString(previousInvoiceDate);
+  if (!previousDate) {
+    return "";
+  }
+
+  const year = previousDate.getFullYear();
+  const month = previousDate.getMonth() + 1;
+  const targetMonthDate = new Date(year, month + 1, 0);
+
+  while (!isMauritiusWorkingDay(targetMonthDate)) {
+    targetMonthDate.setDate(targetMonthDate.getDate() - 1);
+  }
+
+  return formatDateInputValue(targetMonthDate);
+}
+
+function countWorkingDaysBetweenInvoices(previousInvoiceDate, nextInvoiceDate) {
+  const startDate = parseDateString(previousInvoiceDate);
+  const endDate = parseDateString(nextInvoiceDate);
+  if (!startDate || !endDate || endDate <= startDate) {
+    return 0;
+  }
+
+  const cursor = new Date(startDate);
+  cursor.setDate(cursor.getDate() + 1);
+  let workingDays = 0;
+  while (cursor <= endDate) {
+    if (isMauritiusWorkingDay(cursor)) {
+      workingDays += 1;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return workingDays;
+}
+
+function isMauritiusWorkingDay(date) {
+  return !isWeekend(date) && !isMauritiusPublicHoliday(date);
+}
+
+function isWeekend(date) {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function isMauritiusPublicHoliday(date) {
+  const holidays = MAURITIUS_PUBLIC_HOLIDAYS[date.getFullYear()];
+  return holidays ? holidays.has(formatDateInputValue(date)) : false;
+}
+
+function parseDateString(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) {
+    return null;
+  }
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatTaxRate(value) {
+  return Number(value).toFixed(3).replace(/\.?0+$/, "");
 }
 
 function getTodayDateString() {
