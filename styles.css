@@ -13,6 +13,7 @@
   --danger: #a3333d;
   --shadow: 0 24px 60px rgba(25, 42, 31, 0.12);
   --shadow-hover: 0 28px 66px rgba(25, 42, 31, 0.16);
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * {
@@ -24,6 +25,7 @@ body {
   min-height: 100vh;
   color: var(--ink);
   font-family: "Source Sans 3", sans-serif;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at top left, rgba(214, 168, 79, 0.24), transparent 26%),
     radial-gradient(circle at top right, rgba(15, 118, 110, 0.18), transparent 24%),
@@ -46,11 +48,37 @@ body::before {
   mask-image: radial-gradient(circle at center, black 40%, transparent 92%);
 }
 
+body::after {
+  content: "";
+  position: fixed;
+  inset: -12%;
+  pointer-events: none;
+  opacity: 0.4;
+  background:
+    radial-gradient(circle at 18% 24%, rgba(214, 168, 79, 0.16), transparent 22%),
+    radial-gradient(circle at 80% 16%, rgba(15, 118, 110, 0.14), transparent 24%),
+    radial-gradient(circle at 64% 82%, rgba(255, 255, 255, 0.2), transparent 18%);
+  animation: ambientDrift 26s ease-in-out infinite alternate;
+}
+
 .page-shell {
   width: min(1380px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 28px 0 56px;
 }
+
+.content-grid > .glass-card {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: cardReveal 520ms var(--ease-smooth) forwards;
+}
+
+.content-grid > .glass-card:nth-child(1) { animation-delay: 40ms; }
+.content-grid > .glass-card:nth-child(2) { animation-delay: 90ms; }
+.content-grid > .glass-card:nth-child(3) { animation-delay: 140ms; }
+.content-grid > .glass-card:nth-child(4) { animation-delay: 190ms; }
+.content-grid > .glass-card:nth-child(5) { animation-delay: 240ms; }
+.content-grid > .glass-card:nth-child(6) { animation-delay: 290ms; }
 
 .glass-card {
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -58,10 +86,11 @@ body::before {
   backdrop-filter: blur(18px);
   border-radius: 28px;
   box-shadow: var(--shadow);
-  transition: box-shadow 180ms ease, border-color 180ms ease;
+  transition: transform 220ms var(--ease-smooth), box-shadow 220ms var(--ease-smooth), border-color 220ms var(--ease-smooth);
 }
 
 .glass-card:hover {
+  transform: translateY(-2px);
   box-shadow: var(--shadow-hover);
 }
 
@@ -130,6 +159,14 @@ h3 {
   background: rgba(15, 118, 110, 0.08);
   color: var(--primary-strong);
   font-weight: 700;
+  transition: transform 220ms var(--ease-smooth), background 220ms var(--ease-smooth), box-shadow 220ms var(--ease-smooth);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.ledger-banner:hover {
+  transform: translateY(-1px);
+  background: rgba(15, 118, 110, 0.11);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 12px 30px rgba(17, 94, 89, 0.08);
 }
 
 .control-bar {
@@ -223,7 +260,7 @@ h3 {
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  transition: transform 180ms var(--ease-smooth), box-shadow 180ms var(--ease-smooth), background 180ms var(--ease-smooth), color 180ms var(--ease-smooth);
 }
 
 .btn:hover {
@@ -318,7 +355,7 @@ h3 {
   font: inherit;
   font-weight: 800;
   cursor: pointer;
-  transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  transition: transform 180ms var(--ease-smooth), background 180ms var(--ease-smooth), box-shadow 180ms var(--ease-smooth), border-color 180ms var(--ease-smooth), color 180ms var(--ease-smooth);
 }
 
 .icon-btn:hover {
@@ -385,7 +422,7 @@ h3 {
     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(241, 247, 245, 0.88));
   text-align: center;
   cursor: pointer;
-  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+  transition: transform 220ms var(--ease-smooth), border-color 220ms var(--ease-smooth), background 220ms var(--ease-smooth), box-shadow 220ms var(--ease-smooth);
 }
 
 .drop-zone.compact {
@@ -411,6 +448,7 @@ h3 {
 .drop-zone.compact:hover {
   transform: translateY(-2px);
   border-color: rgba(15, 118, 110, 0.4);
+  box-shadow: 0 20px 36px rgba(17, 94, 89, 0.08);
   background:
     radial-gradient(circle at top, rgba(15, 118, 110, 0.12), transparent 52%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 247, 245, 0.92));
@@ -427,6 +465,8 @@ h3 {
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  animation: softPulse 5.2s ease-in-out infinite;
 }
 
 .drop-title {
@@ -463,6 +503,13 @@ h3 {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.58);
   border: 1px solid var(--line);
+  transition: transform 220ms var(--ease-smooth), border-color 220ms var(--ease-smooth), box-shadow 220ms var(--ease-smooth);
+}
+
+.mini-log-shell:hover {
+  transform: translateY(-1px);
+  border-color: rgba(15, 118, 110, 0.18);
+  box-shadow: 0 14px 28px rgba(25, 42, 31, 0.06);
 }
 
 .mini-log-head {
@@ -617,7 +664,7 @@ h3 {
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease;
+  transition: transform 180ms var(--ease-smooth), background 180ms var(--ease-smooth), border-color 180ms var(--ease-smooth), box-shadow 180ms var(--ease-smooth), color 180ms var(--ease-smooth);
 }
 
 .filter-chip:hover {
@@ -653,6 +700,13 @@ h3 {
   border: 1px solid var(--line);
   color: var(--muted-soft);
   font-size: 0.82rem;
+  transition: transform 180ms var(--ease-smooth), border-color 180ms var(--ease-smooth), background 180ms var(--ease-smooth);
+}
+
+.active-filter-pill:hover {
+  transform: translateY(-1px);
+  border-color: rgba(15, 118, 110, 0.18);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .active-filter-pill strong {
@@ -724,6 +778,13 @@ h3 {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  transition: transform 180ms var(--ease-smooth), box-shadow 180ms var(--ease-smooth), background 180ms var(--ease-smooth);
+}
+
+.account-bank:hover,
+.currency-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(25, 42, 31, 0.08);
 }
 
 .account-bank-mcb {
@@ -781,6 +842,8 @@ h3 {
   border-radius: 22px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  scrollbar-color: rgba(17, 94, 89, 0.28) transparent;
 }
 
 .table-card .table-wrap,
@@ -852,7 +915,8 @@ thead th {
   position: sticky;
   top: 0;
   z-index: 3;
-  background: #f9f4ea;
+  background: rgba(249, 244, 234, 0.94);
+  backdrop-filter: blur(10px);
   color: #5b6b62;
   font-size: 0.76rem;
   font-weight: 800;
@@ -906,11 +970,12 @@ thead th {
 }
 
 tbody tr {
-  transition: background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+  transition: background 180ms var(--ease-smooth), transform 180ms var(--ease-smooth), box-shadow 180ms var(--ease-smooth);
 }
 
 tbody tr:hover {
   background: rgba(15, 118, 110, 0.07);
+  transform: translateX(2px);
   box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.08);
 }
 
@@ -932,6 +997,25 @@ tbody tr:hover {
   background: rgba(255, 255, 255, 0.86);
   color: var(--ink);
   font: inherit;
+  transition: border-color 180ms var(--ease-smooth), box-shadow 180ms var(--ease-smooth), background 180ms var(--ease-smooth), transform 180ms var(--ease-smooth);
+}
+
+.tax-input:hover,
+.tax-readonly:hover,
+.field input:hover,
+.field select:hover {
+  border-color: rgba(15, 118, 110, 0.22);
+}
+
+.tax-input:focus,
+.field input:focus,
+.field select:focus,
+.page-jump-input:focus,
+.tax-summary-input:focus {
+  outline: none;
+  border-color: rgba(15, 118, 110, 0.34);
+  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.08);
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .tax-input[type="number"] {
@@ -1478,6 +1562,17 @@ tbody tr:hover {
   min-height: 280px;
 }
 
+.trend-point,
+.trend-actual,
+.trend-projection {
+  transition: transform 180ms var(--ease-smooth), filter 180ms var(--ease-smooth), opacity 180ms var(--ease-smooth);
+}
+
+.trend-point:hover {
+  transform: scale(1.12);
+  filter: drop-shadow(0 4px 10px rgba(17, 94, 89, 0.18));
+}
+
 .trend-gridline {
   stroke: rgba(20, 38, 29, 0.08);
   stroke-width: 1;
@@ -1735,5 +1830,44 @@ tbody tr:hover {
 
   .tax-table td[data-label="CSG Payment Reference"] .tax-input {
     min-width: 250px;
+  }
+}
+
+@keyframes cardReveal {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ambientDrift {
+  from {
+    transform: translate3d(-1.2%, -0.8%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(1.4%, 1%, 0) scale(1.03);
+  }
+}
+
+@keyframes softPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }
