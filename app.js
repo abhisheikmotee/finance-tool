@@ -208,7 +208,6 @@ function cacheElements() {
   els.importPanel = document.getElementById("import-panel");
   els.toggleImportPanel = document.getElementById("toggle-import-panel");
   els.closeImportPanel = document.getElementById("close-import-panel");
-  els.importStatus = document.getElementById("import-status");
   els.ledgerStatus = document.getElementById("ledger-status");
   els.importLog = document.getElementById("import-log");
   els.metricsGrid = document.getElementById("metrics-grid");
@@ -466,7 +465,7 @@ async function restoreLedgerHandle() {
 
   const storedHandle = await getSetting("ledgerHandle");
   if (!storedHandle) {
-    updateLedgerStatus("Choose or create a ledger file to persist data on disk.");
+    updateLedgerStatus("Choose or create a ledger file to get started.");
     return;
   }
 
@@ -575,7 +574,7 @@ async function createNewLedger() {
   await persistTaxExpectedExpenses();
   applyFilters();
   renderAll();
-  updateLedgerStatus(`New ledger ready: ${state.ledgerName}. Click Save to download it.`);
+  updateLedgerStatus(`Ledger file ready: ${state.ledgerName}. Click Save to download it.`);
   logMessage(`Started a new ledger: ${state.ledgerName}`);
 }
 
@@ -596,10 +595,10 @@ async function openExistingLedger() {
     await loadLedgerFromHandle(handle, true);
     const permissionGranted = await ensureReadWritePermission(handle, true);
     if (permissionGranted) {
-      updateLedgerStatus(`Ledger file: ${state.ledgerName}`);
+      updateLedgerStatus(`Ledger file ready: ${state.ledgerName}`);
       logMessage(`Write access granted for ${state.ledgerName}. Save will overwrite this file.`);
     } else {
-      updateLedgerStatus(`Ledger file: ${state.ledgerName}. Click Save to retry permission.`);
+      updateLedgerStatus(`Ledger file ready: ${state.ledgerName}. Click Save to retry permission.`);
       logMessage(`Write access not granted yet for ${state.ledgerName}.`);
     }
     logMessage(`Opened ledger file: ${state.ledgerName}`);
@@ -631,7 +630,7 @@ async function loadLedgerFromHandle(handle, storeHandle = false) {
   if (storeHandle) {
     await setSetting("ledgerHandle", handle);
   }
-  updateLedgerStatus(`Ledger file: ${state.ledgerName}`);
+  updateLedgerStatus(`Ledger file ready: ${state.ledgerName}`);
   applyFilters();
   renderAll();
 }
@@ -653,7 +652,7 @@ async function loadLedgerFromFile(file) {
     : calculateSuggestedTaxExpectedExpenses(state.transactions);
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
-  updateLedgerStatus(`Opened ledger: ${state.ledgerName}. Save will download the updated file.`);
+  updateLedgerStatus(`Ledger file ready: ${state.ledgerName}. Save will download the updated file.`);
   applyFilters();
   renderAll();
   logMessage(`Opened ledger file: ${state.ledgerName}`);
@@ -674,7 +673,7 @@ async function saveLedgerToDisk() {
       await writable.write(snapshot);
       await writable.close();
       await setSetting("ledgerHandle", state.ledgerHandle);
-      updateLedgerStatus(`Saved to ${state.ledgerName}`);
+      updateLedgerStatus(`Ledger file ready: ${state.ledgerName}. Changes saved.`);
       return;
     } catch (error) {
       updateLedgerStatus(`Could not save to ${state.ledgerName}.`);
@@ -1155,9 +1154,9 @@ function renderQuickFilterChips() {
 
 function renderLedgerStatus() {
   if (state.ledgerName) {
-    updateLedgerStatus(`Ledger file: ${state.ledgerName}`);
+    updateLedgerStatus(`Ledger file ready: ${state.ledgerName}`);
   } else if (supportsFileSystemAccess()) {
-    updateLedgerStatus("Choose or create a ledger file. Data is saved outside browser cache.");
+    updateLedgerStatus("Choose or create a ledger file to get started.");
   }
 }
 
@@ -2914,7 +2913,12 @@ async function persistTaxExpectedExpenses() {
 }
 
 function updateStatus(text) {
-  els.importStatus.textContent = text;
+  if (!els.ledgerStatus) return;
+  if (state.ledgerName) {
+    els.ledgerStatus.textContent = `Ledger file ready: ${state.ledgerName}. ${text}`;
+    return;
+  }
+  els.ledgerStatus.textContent = text;
 }
 
 function updateLedgerStatus(text) {
