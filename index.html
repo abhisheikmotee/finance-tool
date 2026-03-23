@@ -42,7 +42,7 @@
           <button class="filter-chip" type="button" data-chip="last-year">Last year</button>
           <button class="filter-chip" type="button" data-chip="salary-only">Salary only</button>
           <button class="filter-chip" type="button" data-chip="trading-only">Trading only</button>
-          <button class="filter-chip" type="button" data-chip="transfers-excluded">Transfers excluded</button>
+          <button class="filter-chip" type="button" data-chip="own-account-transfers-excluded">Own Account Transfer Excluded</button>
           <button class="filter-chip" type="button" data-chip="sbm-only">SBM only</button>
           <button class="filter-chip" type="button" data-chip="mcb-only">MCB only</button>
         </div>
@@ -82,7 +82,10 @@
             <p class="section-kicker">Ledger</p>
             <h2>Transactions Table</h2>
           </div>
-          <div id="table-count" class="table-count">0 rows</div>
+          <div class="table-heading-actions">
+            <button id="table-export-btn" class="btn btn-secondary" type="button">Export CSV</button>
+            <div id="table-count" class="table-count">0 rows</div>
+          </div>
         </div>
         <div class="table-wrap">
           <table>

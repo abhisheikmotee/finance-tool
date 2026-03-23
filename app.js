@@ -142,7 +142,7 @@ const state = {
     datePreset: "this-year",
     salaryOnly: false,
     tradingOnly: false,
-    excludeTransfers: false,
+    excludeOwnAccountTransfers: false,
     bankOnly: "all",
   },
   tableSort: {
@@ -199,6 +199,7 @@ function cacheElements() {
   els.taxBody = document.getElementById("tax-body");
   els.taxSummaryBody = document.getElementById("tax-summary-body");
   els.addTaxRowBtn = document.getElementById("add-tax-row-btn");
+  els.tableExportBtn = document.getElementById("table-export-btn");
   els.tableCount = document.getElementById("table-count");
   els.prevPage = document.getElementById("prev-page");
   els.nextPage = document.getElementById("next-page");
@@ -257,6 +258,7 @@ function bindEvents() {
 
   els.quickFilterChips.addEventListener("click", handleQuickFilterChipClick);
   els.clearFiltersBtn.addEventListener("click", clearFilters);
+  els.tableExportBtn.addEventListener("click", exportTransactionsCsv);
   document.querySelector(".table-card thead")?.addEventListener("click", handleTableSortClick);
 
   els.pageSize.addEventListener("change", () => {
@@ -310,7 +312,7 @@ function clearFilters() {
     datePreset: "this-year",
     salaryOnly: false,
     tradingOnly: false,
-    excludeTransfers: false,
+    excludeOwnAccountTransfers: false,
     bankOnly: "all",
   };
   els.searchInput.value = "";
@@ -333,8 +335,8 @@ function handleQuickFilterChipClick(event) {
     state.quickFilters.salaryOnly = !state.quickFilters.salaryOnly;
   } else if (chip === "trading-only") {
     state.quickFilters.tradingOnly = !state.quickFilters.tradingOnly;
-  } else if (chip === "transfers-excluded") {
-    state.quickFilters.excludeTransfers = !state.quickFilters.excludeTransfers;
+  } else if (chip === "own-account-transfers-excluded") {
+    state.quickFilters.excludeOwnAccountTransfers = !state.quickFilters.excludeOwnAccountTransfers;
   } else if (chip === "sbm-only" || chip === "mcb-only") {
     state.quickFilters.bankOnly = state.quickFilters.bankOnly === chip ? "all" : chip;
   }
@@ -1045,7 +1047,7 @@ function applyFilters() {
   const query = els.searchInput.value.trim().toLowerCase();
   const account = els.accountFilter.value || "all";
   const { fromDate, toDate } = getEffectiveDateRange();
-  const { salaryOnly, tradingOnly, excludeTransfers, bankOnly } = state.quickFilters;
+  const { salaryOnly, tradingOnly, excludeOwnAccountTransfers, bankOnly } = state.quickFilters;
 
   state.filteredTransactions = state.transactions.filter((txn) => {
     const matchesQuery = !query || [txn.description, txn.reference, txn.sourceFile, txn.accountLabel]
@@ -1055,7 +1057,7 @@ function applyFilters() {
     const matchesToDate = !toDate || txn.txnDate <= toDate;
     const matchesSalary = !salaryOnly || isSalaryTransaction(txn);
     const matchesTrading = !tradingOnly || isTradingTransaction(txn);
-    const matchesTransfer = !excludeTransfers || !isTransferTransaction(txn);
+    const matchesOwnAccountTransfer = !excludeOwnAccountTransfers || !isOwnAccountTransferTransaction(txn);
     const matchesBank = bankOnly === "all"
       || (bankOnly === "sbm-only" && txn.bankName === "SBM")
       || (bankOnly === "mcb-only" && txn.bankName === "MCB");
@@ -1065,7 +1067,7 @@ function applyFilters() {
       && matchesToDate
       && matchesSalary
       && matchesTrading
-      && matchesTransfer
+      && matchesOwnAccountTransfer
       && matchesBank;
   });
   state.sortedTransactions = sortTransactions(state.filteredTransactions);
@@ -1105,7 +1107,7 @@ function renderQuickFilterChips() {
     "last-year": !usingManualDates && state.quickFilters.datePreset === "last-year",
     "salary-only": state.quickFilters.salaryOnly,
     "trading-only": state.quickFilters.tradingOnly,
-    "transfers-excluded": state.quickFilters.excludeTransfers,
+    "own-account-transfers-excluded": state.quickFilters.excludeOwnAccountTransfers,
     "sbm-only": state.quickFilters.bankOnly === "sbm-only",
     "mcb-only": state.quickFilters.bankOnly === "mcb-only",
   };
@@ -1163,7 +1165,7 @@ function renderActiveFilterSummary() {
   }
   if (state.quickFilters.salaryOnly) pills.push({ label: "Quick", value: "Salary only" });
   if (state.quickFilters.tradingOnly) pills.push({ label: "Quick", value: "Trading only" });
-  if (state.quickFilters.excludeTransfers) pills.push({ label: "Quick", value: "Transfers excluded" });
+  if (state.quickFilters.excludeOwnAccountTransfers) pills.push({ label: "Quick", value: "Own account transfers excluded" });
   if (state.quickFilters.bankOnly === "sbm-only") pills.push({ label: "Bank", value: "SBM only" });
   if (state.quickFilters.bankOnly === "mcb-only") pills.push({ label: "Bank", value: "MCB only" });
 
@@ -2323,13 +2325,13 @@ function projectFutureMonthlyValues(monthSeries, lastMonthNumber, monthsRemainin
 }
 
 function exportTransactionsCsv() {
-  if (!state.transactions.length) {
+  if (!state.filteredTransactions.length) {
     logMessage("Nothing to export yet.");
     return;
   }
 
   const headers = ["Txn Date", "Value Date", "Account", "Currency", "Description", "Debit", "Credit", "Balance", "Reference", "Source File"];
-  const rows = state.transactions.map((txn) => [
+  const rows = state.sortedTransactions.map((txn) => [
     txn.txnDate,
     txn.valueDate,
     txn.accountLabel,
@@ -2347,9 +2349,10 @@ function exportTransactionsCsv() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "finance_transactions_export.csv";
+  link.download = "finance_transactions_filtered_export.csv";
   link.click();
   URL.revokeObjectURL(url);
+  logMessage(`Exported ${rows.length} filtered transaction(s) to CSV.`);
 }
 
 async function resetLedgerData() {
@@ -2985,6 +2988,10 @@ function isTransferTransaction(txn) {
   if (category.startsWith("Transfers")) return true;
   const text = `${txn.description || ""} ${txn.reference || ""}`.toUpperCase();
   return text.includes("TRANSFER");
+}
+
+function isOwnAccountTransferTransaction(txn) {
+  return categorizeTransaction(txn) === "Transfers Between Own Accounts";
 }
 
 function isSqliSalaryTransfer(txn) {
