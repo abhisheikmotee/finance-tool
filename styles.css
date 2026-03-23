@@ -783,6 +783,12 @@ h3 {
   background: rgba(255, 255, 255, 0.9);
 }
 
+.table-card .table-wrap,
+.tax-table-wrap {
+  max-height: min(70vh, 640px);
+  overflow: auto;
+}
+
 .table-wrap.compact {
   max-height: 320px;
 }
@@ -845,13 +851,14 @@ td {
 thead th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 3;
   background: #f9f4ea;
   color: #5b6b62;
   font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.12em;
+  box-shadow: inset 0 -1px 0 var(--line);
 }
 
 .sort-btn {
