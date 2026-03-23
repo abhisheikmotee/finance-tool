@@ -30,7 +30,7 @@
       <section class="glass-card filters-card">
         <div class="section-heading">
           <div>
-            <p class="section-kicker">Filter</p>
+            <p class="section-kicker">Options</p>
             <h2>Transactions</h2>
           </div>
           <button id="clear-filters-btn" class="btn btn-secondary" type="button">Reset Filters</button>
@@ -64,15 +64,6 @@
             <span>To Date</span>
             <input id="to-date" type="date">
           </label>
-          <label class="field">
-            <span>Rows Per Page</span>
-            <select id="page-size">
-              <option value="10" selected>10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
-          </label>
         </div>
         <div id="active-filter-summary" class="active-filter-summary" hidden></div>
       </section>
@@ -84,6 +75,15 @@
             <h2>Transactions Table</h2>
           </div>
           <div class="table-heading-actions">
+            <label class="field field-inline table-page-size">
+              <span>Rows Per Page</span>
+              <select id="page-size">
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
             <div id="table-count" class="table-count">0 rows</div>
             <button id="table-export-btn" class="btn btn-secondary" type="button">Export CSV</button>
           </div>
