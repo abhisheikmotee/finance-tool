@@ -971,6 +971,13 @@ tbody tr:hover {
   background: linear-gradient(180deg, rgba(15, 118, 110, 0.16), rgba(214, 168, 79, 0.08));
 }
 
+.tax-row-next-receipt .tax-input,
+.tax-row-next-receipt .tax-readonly {
+  border-color: rgba(15, 118, 110, 0.22);
+  background: linear-gradient(180deg, rgba(250, 255, 252, 0.98), rgba(229, 240, 233, 0.92));
+  box-shadow: 0 10px 22px rgba(17, 94, 89, 0.08);
+}
+
 #monthly-summary-body tr.month-band-even td {
   background: rgba(255, 255, 255, 0.58);
 }
