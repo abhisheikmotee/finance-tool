@@ -47,3 +47,15 @@ test("add row prefills next invoice date, GBP rate, and salary amount", async ({
   await expect(newRow.locator('[data-field="exchangeRate"]')).toHaveValue("61.97");
   await expect(newRow.locator('[data-field="amountReceivedGbp"]')).toHaveValue("8050");
 });
+
+test("next pending received date is highlighted and scrolled into view", async ({ page }) => {
+  await page.goto("/");
+
+  const nextReceiptInput = page.locator('[data-next-tax-receipt-input="true"]');
+  await expect(nextReceiptInput).toHaveValue("");
+  await expect(nextReceiptInput).toBeVisible();
+  await expect(nextReceiptInput).toHaveAttribute("data-index", "8");
+
+  const taxTableWrap = page.locator(".tax-table-wrap");
+  await expect.poll(async () => taxTableWrap.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+});

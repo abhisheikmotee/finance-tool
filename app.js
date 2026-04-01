@@ -183,6 +183,7 @@ const state = {
     key: "txnDate",
     direction: "desc",
   },
+  shouldScrollNextTaxReceipt: true,
 };
 
 const els = {};
@@ -232,6 +233,7 @@ function cacheElements() {
   els.taxBody = document.getElementById("tax-body");
   els.taxSummaryBody = document.getElementById("tax-summary-body");
   els.addTaxRowBtn = document.getElementById("add-tax-row-btn");
+  els.taxTableWrap = document.querySelector(".tax-table-wrap");
   els.tableExportBtn = document.getElementById("table-export-btn");
   els.tableCount = document.getElementById("table-count");
   els.prevPage = document.getElementById("prev-page");
@@ -324,6 +326,7 @@ function bindEvents() {
 
   els.addTaxRowBtn.addEventListener("click", async () => {
     state.taxEntries.push(createPrefilledTaxEntry());
+    state.shouldScrollNextTaxReceipt = true;
     renderTaxTable();
     renderTaxSummary();
     await persistTaxEntries();
@@ -512,6 +515,8 @@ async function restoreTaxEntries() {
     logMessage(`Could not restore tax entries: ${error.message}`);
   }
 
+  state.shouldScrollNextTaxReceipt = true;
+
   try {
     const savedExpectedExpenses = await getSetting(TAX_EXPECTED_EXPENSES_KEY);
     const savedExpectedExpensesMode = await getSetting(TAX_EXPECTED_EXPENSES_MODE_KEY);
@@ -567,6 +572,7 @@ async function createNewLedger() {
   state.taxExpectedExpensesMode = AUTO_TAX_EXPENSES_MODE;
   state.taxExpectedExpenses = calculateSuggestedTaxExpectedExpenses(state.transactions);
   state.currentPage = 1;
+  state.shouldScrollNextTaxReceipt = true;
   state.ledgerHandle = null;
   state.ledgerName = "finance-ledger.json";
   state.saveMode = supportsFileSystemAccess() ? "download" : "download";
@@ -625,6 +631,7 @@ async function loadLedgerFromHandle(handle, storeHandle = false) {
   state.taxExpectedExpenses = state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE
     ? (Number(data.taxExpectedExpenses) || DEFAULT_EXPECTED_EXPENSES)
     : calculateSuggestedTaxExpectedExpenses(state.transactions);
+  state.shouldScrollNextTaxReceipt = true;
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
   if (storeHandle) {
@@ -650,6 +657,7 @@ async function loadLedgerFromFile(file) {
   state.taxExpectedExpenses = state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE
     ? (Number(data.taxExpectedExpenses) || DEFAULT_EXPECTED_EXPENSES)
     : calculateSuggestedTaxExpectedExpenses(state.transactions);
+  state.shouldScrollNextTaxReceipt = true;
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
   updateLedgerStatus(`Ledger file ready: ${state.ledgerName}. Save will download the updated file.`);
@@ -2413,6 +2421,7 @@ async function resetLedgerData() {
   state.taxExpectedExpensesMode = AUTO_TAX_EXPENSES_MODE;
   state.taxExpectedExpenses = calculateSuggestedTaxExpectedExpenses(state.transactions);
   state.currentPage = 1;
+  state.shouldScrollNextTaxReceipt = true;
   await persistTaxEntries();
   await persistTaxExpectedExpenses();
   await saveLedgerToDisk();
@@ -2424,6 +2433,7 @@ async function resetLedgerData() {
 function renderTaxTable() {
   if (!state.taxEntries.length) {
     els.taxBody.innerHTML = `<tr><td colspan="10" class="empty-state">No tax rows yet. Click Add Row to start tracking invoices and CSG.</td></tr>`;
+    state.shouldScrollNextTaxReceipt = false;
     return;
   }
 
@@ -2443,6 +2453,9 @@ function renderTaxTable() {
       </tr>
     `;
   }).join("");
+
+  syncNextTaxReceiptTarget({ scroll: state.shouldScrollNextTaxReceipt });
+  state.shouldScrollNextTaxReceipt = false;
 }
 
 function renderTaxSummary() {
@@ -2573,8 +2586,14 @@ function handleTaxTableInput(event) {
     return;
   }
 
+  const shouldScrollNextReceipt = field === "dateReceived"
+    && target.hasAttribute("data-next-tax-receipt-input")
+    && Boolean(target.value);
   state.taxEntries[index][field] = target.value;
   updateTaxComputedRow(index);
+  if (field === "dateReceived") {
+    syncNextTaxReceiptTarget({ scroll: shouldScrollNextReceipt });
+  }
   renderTaxSummary();
   persistTaxEntries();
 }
@@ -2594,6 +2613,71 @@ function handleTaxTableClick(event) {
   renderTaxTable();
   renderTaxSummary();
   persistTaxEntries();
+}
+
+function getNextTaxReceiptEntryIndex() {
+  return state.taxEntries.findIndex((entry) => !String(entry?.dateReceived || "").trim());
+}
+
+function syncNextTaxReceiptTarget({ scroll = false } = {}) {
+  if (!els.taxBody) {
+    return;
+  }
+
+  els.taxBody.querySelectorAll("[data-next-tax-receipt]").forEach((row) => {
+    row.classList.remove("tax-row-next-receipt");
+    row.removeAttribute("data-next-tax-receipt");
+  });
+
+  els.taxBody.querySelectorAll("[data-next-tax-receipt-input]").forEach((input) => {
+    input.classList.remove("tax-input-next-receipt");
+    input.removeAttribute("data-next-tax-receipt-input");
+  });
+
+  const nextIndex = getNextTaxReceiptEntryIndex();
+  if (nextIndex < 0) {
+    return;
+  }
+
+  const row = els.taxBody.querySelector(`[data-tax-row="${nextIndex}"]`);
+  const input = els.taxBody.querySelector(`[data-index="${nextIndex}"][data-field="dateReceived"]`);
+  if (!(row instanceof HTMLTableRowElement) || !(input instanceof HTMLInputElement)) {
+    return;
+  }
+
+  row.classList.add("tax-row-next-receipt");
+  row.setAttribute("data-next-tax-receipt", "true");
+  input.classList.add("tax-input-next-receipt");
+  input.setAttribute("data-next-tax-receipt-input", "true");
+
+  if (scroll) {
+    scrollTaxReceiptTargetIntoView(row);
+  }
+}
+
+function scrollTaxReceiptTargetIntoView(row) {
+  if (!(els.taxTableWrap instanceof HTMLElement)) {
+    return;
+  }
+
+  requestAnimationFrame(() => {
+    if (!row.isConnected) {
+      return;
+    }
+
+    const containerRect = els.taxTableWrap.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const nextTop = els.taxTableWrap.scrollTop
+      + (rowRect.top - containerRect.top)
+      - (els.taxTableWrap.clientHeight / 2)
+      + (rowRect.height / 2);
+
+    els.taxTableWrap.scrollTo({
+      top: Math.max(0, nextTop),
+      left: els.taxTableWrap.scrollLeft,
+      behavior: "smooth",
+    });
+  });
 }
 
 function handleTaxSummaryInput(event) {
