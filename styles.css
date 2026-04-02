@@ -967,6 +967,39 @@ tbody tr:hover {
   background: linear-gradient(180deg, rgba(15, 118, 110, 0.08), rgba(15, 118, 110, 0.03));
 }
 
+.tax-year-divider-row td {
+  padding: 16px 10px 8px;
+  background: rgba(255, 250, 242, 0.94);
+}
+
+.tax-year-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tax-year-divider-line {
+  flex: 1;
+  min-width: 20px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(214, 168, 79, 0), rgba(214, 168, 79, 0.7), rgba(15, 118, 110, 0.24));
+}
+
+.tax-year-divider-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 118, 110, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(226, 237, 229, 0.86));
+  color: var(--primary-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .tax-row-next-receipt td[data-label="Date Received"] {
   background: linear-gradient(180deg, rgba(15, 118, 110, 0.16), rgba(214, 168, 79, 0.08));
 }

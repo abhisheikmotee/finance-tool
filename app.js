@@ -2105,8 +2105,22 @@ function getPlanningYear() {
 }
 
 function getCurrentTaxYearRange(today = getTodayDateString()) {
-  const year = Number(today.slice(0, 4));
-  const month = Number(today.slice(5, 7));
+  return getTaxYearRangeForDate(today) || {
+    start: "",
+    end: "",
+    label: "",
+    startYear: Number.NaN,
+    endYear: Number.NaN,
+  };
+}
+
+function getTaxYearRangeForDate(dateString) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateString || ""))) {
+    return null;
+  }
+
+  const year = Number(dateString.slice(0, 4));
+  const month = Number(dateString.slice(5, 7));
   const startYear = month >= 7 ? year : year - 1;
   const endYear = startYear + 1;
   return {
@@ -2437,9 +2451,26 @@ function renderTaxTable() {
     return;
   }
 
+  let previousTaxYearKey = "";
   els.taxBody.innerHTML = state.taxEntries.map((entry, index) => {
     const computed = computeTaxEntry(entry);
+    const taxYearRange = getTaxYearRangeForDate(getEffectiveTaxReceiptDate(entry));
+    const taxYearKey = taxYearRange ? `${taxYearRange.start}:${taxYearRange.end}` : "";
+    const shouldShowTaxYearDivider = Boolean(taxYearRange) && taxYearKey !== previousTaxYearKey;
+    previousTaxYearKey = taxYearKey;
+
     return `
+      ${shouldShowTaxYearDivider ? `
+        <tr class="tax-year-divider-row" aria-label="Tax year ${escapeHtml(taxYearRange.label)} starts">
+          <td colspan="9">
+            <div class="tax-year-divider">
+              <span class="tax-year-divider-line" aria-hidden="true"></span>
+              <span class="tax-year-divider-label">Tax year ${escapeHtml(taxYearRange.label)}</span>
+              <span class="tax-year-divider-line" aria-hidden="true"></span>
+            </div>
+          </td>
+        </tr>
+      ` : ""}
       <tr data-tax-row="${index}">
         <td data-label="Invoiced Date"><input class="tax-input" type="date" data-index="${index}" data-field="invoicedDate" value="${escapeHtml(entry.invoicedDate)}"></td>
         <td data-label="Date Received"><input class="tax-input" type="date" data-index="${index}" data-field="dateReceived" value="${escapeHtml(entry.dateReceived)}"></td>
