@@ -2519,17 +2519,16 @@ function renderTaxActionQueue() {
       ? `${actions.length} tax ${actions.length === 1 ? "task" : "tasks"} queued`
       : "No urgent tax actions";
   const heroCopy = actions.length
-    ? "Open any item to jump straight to the matching tracker row and finish the update."
-    : "No overdue CSG payments and no past-due receipt follow-ups are waiting right now.";
+    ? "Open any item to jump to the matching tax row."
+    : "All clear right now.";
 
   els.taxActionQueue.innerHTML = `
-    <section class="tax-action-hero is-${heroTone}">
-      <div class="tax-action-hero-copy">
-        <div class="tax-action-hero-kicker">${urgentCount ? "Action needed now" : "Queue status"}</div>
-        <h3>${escapeHtml(heroTitle)}</h3>
-        <p class="tax-action-hero-note">${escapeHtml(heroCopy)}</p>
+    <section class="tax-action-summary is-${heroTone}">
+      <div class="tax-action-summary-copy">
+        <strong class="tax-action-summary-title">${escapeHtml(heroTitle)}</strong>
+        <span class="tax-action-summary-note">${escapeHtml(heroCopy)}</span>
       </div>
-      <div class="tax-action-hero-counts" aria-label="Tax queue summary">
+      <div class="tax-action-summary-counts" aria-label="Tax queue summary">
         ${renderTaxActionCountPill("Urgent", urgentCount, "urgent")}
         ${renderTaxActionCountPill("Upcoming", warningCount, "warning")}
         ${renderTaxActionCountPill("Waiting", normalCount, "normal")}
@@ -2539,12 +2538,7 @@ function renderTaxActionQueue() {
       <div class="tax-action-list" role="list">
         ${actions.map((action) => renderTaxActionQueueItem(action)).join("")}
       </div>
-    ` : `
-      <div class="tax-action-empty">
-        <strong>All caught up.</strong>
-        <span>When a receipt needs logging or a CSG deadline gets close, it will show up here automatically.</span>
-      </div>
-    `}
+    ` : ""}
   `;
 }
 
