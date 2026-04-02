@@ -214,6 +214,7 @@ function cacheElements() {
   els.metricsGrid = document.getElementById("metrics-grid");
   els.metricsLastImport = document.getElementById("metrics-last-import");
   els.trendMetricsGrid = document.getElementById("trend-metrics-grid");
+  els.taxActionQueue = document.getElementById("tax-action-queue");
   els.searchInput = document.getElementById("search-input");
   els.accountFilter = document.getElementById("account-filter");
   els.quickFilterChips = document.getElementById("quick-filter-chips");
@@ -234,6 +235,7 @@ function cacheElements() {
   els.taxSummaryBody = document.getElementById("tax-summary-body");
   els.addTaxRowBtn = document.getElementById("add-tax-row-btn");
   els.taxTableWrap = document.querySelector(".tax-table-wrap");
+  els.taxCard = document.querySelector(".tax-card");
   els.tableExportBtn = document.getElementById("table-export-btn");
   els.tableCount = document.getElementById("table-count");
   els.prevPage = document.getElementById("prev-page");
@@ -328,10 +330,12 @@ function bindEvents() {
     state.taxEntries.push(createPrefilledTaxEntry());
     state.shouldScrollNextTaxReceipt = true;
     renderTaxTable();
+    renderTaxActionQueue();
     renderTaxSummary();
     await persistTaxEntries();
   });
 
+  els.taxActionQueue.addEventListener("click", handleTaxActionQueueClick);
   els.taxBody.addEventListener("input", handleTaxTableInput);
   els.taxBody.addEventListener("click", handleTaxTableClick);
   els.taxSummaryBody.addEventListener("change", handleTaxSummaryInput);
@@ -1134,6 +1138,7 @@ function renderAll() {
   renderTransactionsTable();
   renderMonthlySummary();
   renderTrendInsights();
+  renderTaxActionQueue();
   renderTaxTable();
   renderTaxSummary();
 }
@@ -2132,6 +2137,15 @@ function getTaxYearRangeForDate(dateString) {
   };
 }
 
+function getCsgPaymentDeadline(dateReceived) {
+  const receivedDate = parseDateString(dateReceived);
+  if (!receivedDate) {
+    return "";
+  }
+
+  return formatDateInputValue(new Date(receivedDate.getFullYear(), receivedDate.getMonth() + 2, 0));
+}
+
 function estimateRecurringMonthlySpend(transactions) {
   if (!transactions.length) return 0;
   const latestDate = getLatestTransactionDate(transactions);
@@ -2255,7 +2269,7 @@ function getEffectiveTaxCsgDate(entry) {
   }
   const nextMonth = new Date(`${baseDate}T00:00:00`);
   nextMonth.setMonth(nextMonth.getMonth() + 1);
-  return nextMonth.toISOString().slice(0, 10);
+  return formatDateInputValue(nextMonth);
 }
 
 function buildMonthlySeries(year, lastMonthNumber, totalsMap, clampOutliers = false) {
@@ -2489,6 +2503,197 @@ function renderTaxTable() {
   state.shouldScrollNextTaxReceipt = false;
 }
 
+function renderTaxActionQueue() {
+  if (!els.taxActionQueue) {
+    return;
+  }
+
+  const actions = buildTaxActionQueue();
+  const urgentCount = actions.filter((action) => action.severity === "urgent").length;
+  const warningCount = actions.filter((action) => action.severity === "warning").length;
+  const normalCount = actions.filter((action) => action.severity === "normal").length;
+  const heroTone = urgentCount ? "urgent" : warningCount ? "warning" : "calm";
+  const heroTitle = urgentCount
+    ? `${urgentCount} urgent tax ${urgentCount === 1 ? "action" : "actions"}`
+    : actions.length
+      ? `${actions.length} tax ${actions.length === 1 ? "task" : "tasks"} queued`
+      : "No urgent tax actions";
+  const heroCopy = actions.length
+    ? "Open any item to jump straight to the matching tracker row and finish the update."
+    : "No overdue CSG payments and no past-due receipt follow-ups are waiting right now.";
+
+  els.taxActionQueue.innerHTML = `
+    <section class="tax-action-hero is-${heroTone}">
+      <div class="tax-action-hero-copy">
+        <div class="tax-action-hero-kicker">${urgentCount ? "Action needed now" : "Queue status"}</div>
+        <h3>${escapeHtml(heroTitle)}</h3>
+        <p class="tax-action-hero-note">${escapeHtml(heroCopy)}</p>
+      </div>
+      <div class="tax-action-hero-counts" aria-label="Tax queue summary">
+        ${renderTaxActionCountPill("Urgent", urgentCount, "urgent")}
+        ${renderTaxActionCountPill("Upcoming", warningCount, "warning")}
+        ${renderTaxActionCountPill("Waiting", normalCount, "normal")}
+      </div>
+    </section>
+    ${actions.length ? `
+      <div class="tax-action-list" role="list">
+        ${actions.map((action) => renderTaxActionQueueItem(action)).join("")}
+      </div>
+    ` : `
+      <div class="tax-action-empty">
+        <strong>All caught up.</strong>
+        <span>When a receipt needs logging or a CSG deadline gets close, it will show up here automatically.</span>
+      </div>
+    `}
+  `;
+}
+
+function renderTaxActionCountPill(label, count, tone) {
+  return `
+    <div class="tax-action-count-pill is-${tone}">
+      <strong>${count}</strong>
+      <span>${escapeHtml(label)}</span>
+    </div>
+  `;
+}
+
+function renderTaxActionQueueItem(action) {
+  return `
+    <article class="tax-action-item is-${action.severity}" role="listitem">
+      <div class="tax-action-item-copy">
+        <div class="tax-action-item-topline">
+          <span class="tax-action-badge is-${action.severity}">${escapeHtml(action.badge)}</span>
+          <strong class="tax-action-item-title">${escapeHtml(action.title)}</strong>
+        </div>
+        <div class="tax-action-item-meta">${escapeHtml(action.meta)}</div>
+        <div class="tax-action-item-detail">${escapeHtml(action.detail)}</div>
+      </div>
+      <button
+        class="btn btn-secondary tax-action-open-btn"
+        type="button"
+        data-tax-queue-jump="${action.index}"
+        data-tax-queue-field="${escapeHtml(action.focusField)}"
+      >${escapeHtml(action.buttonLabel)}</button>
+    </article>
+  `;
+}
+
+function buildTaxActionQueue(today = getTodayDateString()) {
+  const actions = state.taxEntries
+    .map((entry, index) => buildTaxActionQueueEntry(entry, index, today))
+    .filter(Boolean);
+
+  return actions.sort((left, right) => (
+    left.priority - right.priority
+    || left.anchorDate.localeCompare(right.anchorDate)
+    || left.index - right.index
+  ));
+}
+
+function buildTaxActionQueueEntry(entry, index, today) {
+  if (isBlankTaxEntry(entry)) {
+    return null;
+  }
+
+  const invoiceLabel = entry.invoicedDate ? `Invoice ${formatDisplayDate(entry.invoicedDate)}` : `Row ${index + 1}`;
+  const hasReceivedDate = Boolean(entry.dateReceived);
+  const hasCsgPaidDate = Boolean(entry.dateCsgPaid);
+  const hasCsgReference = Boolean(String(entry.csgPaymentReference || "").trim());
+  const expectedReceiptDate = getEffectiveTaxReceiptDate(entry);
+  const computed = computeTaxEntry(entry);
+
+  if (!hasReceivedDate) {
+    if (!expectedReceiptDate || expectedReceiptDate > today) {
+      return null;
+    }
+
+    const daysPastExpected = getDateDiffInDays(expectedReceiptDate, today);
+    return {
+      index,
+      severity: "normal",
+      priority: 30,
+      anchorDate: expectedReceiptDate,
+      badge: "Waiting",
+      title: "Confirm receipt date",
+      meta: `${invoiceLabel} • Expected receipt ${formatDisplayDate(expectedReceiptDate)}`,
+      detail: `${daysPastExpected > 0 ? `Expected ${formatRelativeDayCount(daysPastExpected)} ago` : "Expected today"}, so the CSG deadline cannot be tracked yet.`,
+      buttonLabel: "Open Date Received",
+      focusField: "dateReceived",
+    };
+  }
+
+  if (hasCsgPaidDate && !hasCsgReference) {
+    return {
+      index,
+      severity: "warning",
+      priority: 20,
+      anchorDate: entry.dateCsgPaid,
+      badge: "Record",
+      title: "Add CSG payment reference",
+      meta: `${invoiceLabel} • Paid ${formatDisplayDate(entry.dateCsgPaid)}`,
+      detail: "The payment date is recorded, but the tracker row still needs the bank reference.",
+      buttonLabel: "Add Reference",
+      focusField: "csgPaymentReference",
+    };
+  }
+
+  if (!hasCsgPaidDate && hasCsgReference) {
+    return {
+      index,
+      severity: "warning",
+      priority: 19,
+      anchorDate: entry.dateReceived,
+      badge: "Record",
+      title: "Add CSG payment date",
+      meta: `${invoiceLabel} • Received ${formatDisplayDate(entry.dateReceived)}`,
+      detail: "The payment reference is present, but the payment date is still blank.",
+      buttonLabel: "Add Paid Date",
+      focusField: "dateCsgPaid",
+    };
+  }
+
+  if (hasCsgPaidDate && hasCsgReference) {
+    return null;
+  }
+
+  const csgDeadline = getCsgPaymentDeadline(entry.dateReceived);
+  if (!csgDeadline) {
+    return null;
+  }
+
+  const daysUntilDeadline = getDateDiffInDays(today, csgDeadline);
+  const severity = daysUntilDeadline < 0 ? "urgent" : daysUntilDeadline <= 14 ? "warning" : "normal";
+  const badge = daysUntilDeadline < 0 ? "Overdue" : daysUntilDeadline <= 14 ? "Upcoming" : "Planned";
+  const title = daysUntilDeadline < 0
+    ? "CSG payment overdue"
+    : daysUntilDeadline <= 14
+      ? "CSG payment due soon"
+      : "Record CSG payment";
+  const detailParts = [
+    daysUntilDeadline < 0
+      ? `Overdue by ${formatRelativeDayCount(Math.abs(daysUntilDeadline))}.`
+      : daysUntilDeadline === 0
+        ? "Due today."
+        : `Due in ${formatRelativeDayCount(daysUntilDeadline)}.`,
+  ];
+  if (computed.csgAmountPaidMur > 0) {
+    detailParts.push(`Estimated CSG ${moneyFormat(computed.csgAmountPaidMur)} MUR.`);
+  }
+
+  return {
+    index,
+    severity,
+    priority: daysUntilDeadline < 0 ? 0 : daysUntilDeadline <= 14 ? 10 : 25,
+    anchorDate: csgDeadline,
+    badge,
+    title,
+    meta: `${invoiceLabel} • Received ${formatDisplayDate(entry.dateReceived)} • Due ${formatDisplayDate(csgDeadline)}`,
+    detail: detailParts.join(" "),
+    buttonLabel: "Open CSG Fields",
+    focusField: "dateCsgPaid",
+  };
+}
+
 function renderTaxSummary() {
   const summary = computeTaxSummary();
   const taxYearRange = getCurrentTaxYearRange();
@@ -2625,6 +2830,7 @@ function handleTaxTableInput(event) {
   if (field === "dateReceived") {
     syncNextTaxReceiptTarget({ scroll: shouldScrollNextReceipt });
   }
+  renderTaxActionQueue();
   renderTaxSummary();
   persistTaxEntries();
 }
@@ -2642,8 +2848,29 @@ function handleTaxTableClick(event) {
 
   state.taxEntries.splice(index, 1);
   renderTaxTable();
+  renderTaxActionQueue();
   renderTaxSummary();
   persistTaxEntries();
+}
+
+function handleTaxActionQueueClick(event) {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+
+  const trigger = target.closest("[data-tax-queue-jump]");
+  if (!trigger) {
+    return;
+  }
+
+  const index = Number(trigger.getAttribute("data-tax-queue-jump"));
+  const focusField = trigger.getAttribute("data-tax-queue-field") || "";
+  if (!Number.isInteger(index)) {
+    return;
+  }
+
+  jumpToTaxRow(index, focusField);
 }
 
 function getNextTaxReceiptEntryIndex() {
@@ -2709,6 +2936,34 @@ function scrollTaxReceiptTargetIntoView(row) {
       behavior: "smooth",
     });
   });
+}
+
+function jumpToTaxRow(index, focusField = "") {
+  const row = els.taxBody?.querySelector(`[data-tax-row="${index}"]`);
+  if (!(row instanceof HTMLTableRowElement)) {
+    return;
+  }
+
+  els.taxCard?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+  scrollTaxReceiptTargetIntoView(row);
+
+  window.setTimeout(() => {
+    const focusTarget = focusField
+      ? els.taxBody?.querySelector(`[data-index="${index}"][data-field="${focusField}"]`)
+      : row.querySelector("input, button");
+
+    if (!(focusTarget instanceof HTMLElement)) {
+      return;
+    }
+
+    focusTarget.focus({ preventScroll: true });
+    if (focusTarget instanceof HTMLInputElement && (focusTarget.type === "text" || focusTarget.type === "search")) {
+      focusTarget.select();
+    }
+  }, 260);
 }
 
 function handleTaxSummaryInput(event) {
@@ -2933,7 +3188,7 @@ function getEffectiveTaxReceiptDate(entry) {
 
   const invoiceDate = new Date(`${entry.invoicedDate}T00:00:00`);
   invoiceDate.setMonth(invoiceDate.getMonth() + 1);
-  return invoiceDate.toISOString().slice(0, 10);
+  return formatDateInputValue(invoiceDate);
 }
 
 function getLastTaxEntry() {
@@ -3003,7 +3258,7 @@ function formatTaxRate(value) {
 }
 
 function getTodayDateString() {
-  return new Date().toISOString().slice(0, 10);
+  return formatDateInputValue(new Date());
 }
 
 function roundMur(value) {
@@ -3130,10 +3385,32 @@ function formatRateTimestamp(value) {
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
 }
 
+function formatDisplayDate(value) {
+  const parsed = parseDateString(value);
+  return parsed
+    ? parsed.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+    : String(value || "");
+}
+
+function formatRelativeDayCount(value) {
+  const count = Math.abs(Number(value || 0));
+  return `${count} ${count === 1 ? "day" : "days"}`;
+}
+
+function getDateDiffInDays(fromDateString, toDateString) {
+  const fromDate = parseDateString(fromDateString);
+  const toDate = parseDateString(toDateString);
+  if (!fromDate || !toDate) {
+    return 0;
+  }
+
+  return Math.round((toDate.getTime() - fromDate.getTime()) / 86400000);
+}
+
 function shiftDate(dateString, days) {
   const date = new Date(`${dateString}T00:00:00`);
   date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  return formatDateInputValue(date);
 }
 
 function formatMonthShort(value) {
@@ -3326,6 +3603,10 @@ function csvEscape(value) {
     return `"${stringValue.replace(/"/g, '""')}"`;
   }
   return stringValue;
+}
+
+function isBlankTaxEntry(entry) {
+  return !entry || !Object.values(entry).some((value) => String(value || "").trim());
 }
 
 function escapeHtml(value) {
