@@ -735,11 +735,13 @@ function normalizeTransactionRows(rows) {
       debit: Number(row.debit || 0),
       credit: Number(row.credit || 0),
       balance: Number(row.balance || 0),
+      statementOrder: Number.isFinite(Number(row.statementOrder)) ? Number(row.statementOrder) : null,
     }))
     .sort((a, b) =>
       a.txnDate.localeCompare(b.txnDate) ||
       a.valueDate.localeCompare(b.valueDate) ||
       a.accountLabel.localeCompare(b.accountLabel) ||
+      compareStatementOrderForChronology(a, b) ||
       a.rowHash.localeCompare(b.rowHash)
     );
 }
@@ -766,7 +768,9 @@ async function importFiles(files) {
       const text = await file.text();
       const sourceHash = await stableHash(text);
       if (existingImportHashes.has(sourceHash)) {
-        logMessage(`Skipped duplicate statement content: ${file.name}`);
+        const parsed = await parseStatementFile(file.name, text);
+        const updatedRows = backfillStatementOrder(parsed.transactions);
+        logMessage(`Skipped duplicate statement content: ${file.name}${updatedRows ? `; updated statement order for ${updatedRows} existing row(s)` : ""}.`);
         continue;
       }
 
@@ -774,6 +778,7 @@ async function importFiles(files) {
       let addedForFile = 0;
       for (const txn of parsed.transactions) {
         if (existingRowHashes.has(txn.rowHash)) {
+          backfillStatementOrder([txn]);
           continue;
         }
         existingRowHashes.add(txn.rowHash);
@@ -812,6 +817,24 @@ async function importFiles(files) {
   updateStatus(`Imported ${appendedImports.length} file(s), added ${appendedTransactions.length} row(s).`);
 }
 
+function backfillStatementOrder(transactions) {
+  const orderByRowHash = new Map(transactions
+    .filter((txn) => getStatementOrder(txn) !== null)
+    .map((txn) => [txn.rowHash, txn.statementOrder]));
+  if (!orderByRowHash.size) return 0;
+
+  let updatedRows = 0;
+  state.transactions = state.transactions.map((txn) => {
+    if (!orderByRowHash.has(txn.rowHash) || getStatementOrder(txn) !== null) return txn;
+    updatedRows += 1;
+    return {
+      ...txn,
+      statementOrder: orderByRowHash.get(txn.rowHash),
+    };
+  });
+  return updatedRows;
+}
+
 async function parseStatementFile(fileName, text) {
   if (text.includes("Transaction Date,Value Date,Reference,Description,Money out,Money in,Balance")) {
     return parseMcbStatement(fileName, text);
@@ -845,7 +868,7 @@ function parseMcbStatement(fileName, text) {
   );
   const rows = parseCsvText(lines.slice(headerIndex).join("\n"));
 
-  const transactions = rows.slice(1).filter((row) => row.some(Boolean)).map((row) => {
+  const transactions = rows.slice(1).filter((row) => row.some(Boolean)).map((row, statementOrder) => {
     return buildTransaction({
       bankName: "MCB",
       accountNumber,
@@ -858,6 +881,7 @@ function parseMcbStatement(fileName, text) {
       credit: parseAmount(row[5]),
       balance: parseAmount(row[6]),
       sourceFile: fileName,
+      statementOrder,
     });
   });
 
@@ -877,7 +901,7 @@ function parseSbmStatement(fileName, text) {
   );
   const rows = parseCsvText(lines.slice(headerIndex).join("\n"));
 
-  const transactions = rows.slice(1).filter((row) => row.some(Boolean)).map((row) =>
+  const transactions = rows.slice(1).filter((row) => row.some(Boolean)).map((row, statementOrder) =>
     buildTransaction({
       bankName: "SBM",
       accountNumber,
@@ -890,6 +914,7 @@ function parseSbmStatement(fileName, text) {
       credit: parseAmount(row[6]),
       balance: parseAmount(row[7]),
       sourceFile: fileName,
+      statementOrder,
     })
   );
 
@@ -906,7 +931,7 @@ function parseLegacyMcbStatement(fileName, text) {
   const transactions = rows
     .slice(1)
     .filter((row) => row.some((cell) => (cell || "").trim()))
-    .map((row) => buildTransaction({
+    .map((row, statementOrder) => buildTransaction({
       bankName: "MCB",
       accountNumber: metadata.accountNumber,
       currency: metadata.currency,
@@ -918,6 +943,7 @@ function parseLegacyMcbStatement(fileName, text) {
       credit: parseAmount(row[3]),
       balance: parseAmount(row[4]),
       sourceFile: fileName,
+      statementOrder,
     }));
 
   return { accountLabel: `MCB ${metadata.accountNumber} (${metadata.currency})`, transactions };
@@ -933,7 +959,7 @@ function parseLegacySbmStatement(fileName, text) {
   const transactions = rows
     .slice(1)
     .filter((row) => row.some((cell) => (cell || "").trim()))
-    .map((row) => buildTransaction({
+    .map((row, statementOrder) => buildTransaction({
       bankName: "SBM",
       accountNumber: metadata.accountNumber,
       currency: metadata.currency,
@@ -945,6 +971,7 @@ function parseLegacySbmStatement(fileName, text) {
       credit: parseAmount(row[3]),
       balance: parseAmount(row[4]),
       sourceFile: fileName,
+      statementOrder,
     }));
 
   return { accountLabel: `SBM ${metadata.accountNumber} (${metadata.currency})`, transactions };
@@ -976,6 +1003,7 @@ function buildTransaction(input) {
     credit: input.credit,
     balance: input.balance,
     sourceFile: input.sourceFile,
+    statementOrder: Number.isFinite(Number(input.statementOrder)) ? Number(input.statementOrder) : null,
     rowHash: simpleHash(signature),
   };
 }
@@ -1020,6 +1048,33 @@ function parseDelimitedText(text, delimiter) {
     rows.push(row);
   }
   return rows;
+}
+
+function getStatementOrder(txn) {
+  return Number.isFinite(Number(txn.statementOrder)) ? Number(txn.statementOrder) : null;
+}
+
+function compareStatementOrderForDisplay(a, b) {
+  const aOrder = getStatementOrder(a);
+  const bOrder = getStatementOrder(b);
+  if (aOrder === null && bOrder === null) return 0;
+  if (aOrder === null) return 1;
+  if (bOrder === null) return -1;
+  return aOrder - bOrder;
+}
+
+function compareStatementOrderForChronology(a, b) {
+  return -compareStatementOrderForDisplay(a, b);
+}
+
+function isFresherTransaction(candidate, existing) {
+  const dateComparison = candidate.txnDate.localeCompare(existing.txnDate);
+  if (dateComparison !== 0) return dateComparison > 0;
+
+  const orderComparison = compareStatementOrderForDisplay(candidate, existing);
+  if (orderComparison !== 0) return orderComparison < 0;
+
+  return candidate.rowHash.localeCompare(existing.rowHash) > 0;
 }
 
 function parseAmount(raw) {
@@ -1242,13 +1297,20 @@ function sortTransactions(rows) {
     const aValue = picker(a);
     const bValue = picker(b);
     if (typeof aValue === "number" && typeof bValue === "number") {
-      return direction * (aValue - bValue || a.txnDate.localeCompare(b.txnDate));
+      const primaryComparison = aValue - bValue;
+      if (primaryComparison) return direction * primaryComparison;
+      return direction * a.txnDate.localeCompare(b.txnDate)
+        || a.accountLabel.localeCompare(b.accountLabel)
+        || compareStatementOrderForDisplay(a, b)
+        || a.rowHash.localeCompare(b.rowHash);
     }
-    return direction * (
-      String(aValue).localeCompare(String(bValue))
-      || a.txnDate.localeCompare(b.txnDate)
+
+    const primaryComparison = String(aValue).localeCompare(String(bValue));
+    if (primaryComparison) return direction * primaryComparison;
+    return direction * a.txnDate.localeCompare(b.txnDate)
       || a.accountLabel.localeCompare(b.accountLabel)
-    );
+      || compareStatementOrderForDisplay(a, b)
+      || a.rowHash.localeCompare(b.rowHash);
   });
 }
 
@@ -1311,7 +1373,7 @@ function summarizeAccountBalances(transactions) {
   const latestByAccount = new Map();
   transactions.forEach((txn) => {
     const existing = latestByAccount.get(txn.accountLabel);
-    if (!existing || txn.txnDate >= existing.txnDate) {
+    if (!existing || isFresherTransaction(txn, existing)) {
       latestByAccount.set(txn.accountLabel, txn);
     }
   });
@@ -1467,7 +1529,7 @@ function renderMonthlySummary() {
     totalCredit += creditAmount;
 
     const existingBalance = latestBalanceByAccount.get(txn.accountLabel);
-    if (!existingBalance || txn.txnDate >= existingBalance.txnDate) {
+    if (!existingBalance || isFresherTransaction(txn, existingBalance)) {
       latestBalanceByAccount.set(txn.accountLabel, txn);
     }
   });
@@ -1575,8 +1637,9 @@ function renderTrendInsights() {
       lastDate: "",
       net30: 0,
     };
-    if (txn.txnDate >= forecastEntry.lastDate) {
+    if (!forecastEntry.lastTransaction || isFresherTransaction(txn, forecastEntry.lastTransaction)) {
       forecastEntry.lastDate = txn.txnDate;
+      forecastEntry.lastTransaction = txn;
       forecastEntry.lastBalance = toInsightAmount(txn.balance, txn.currency);
     }
     forecastMap.set(txn.accountLabel, forecastEntry);
