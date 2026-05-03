@@ -825,11 +825,13 @@ function backfillStatementOrder(transactions) {
 
   let updatedRows = 0;
   state.transactions = state.transactions.map((txn) => {
-    if (!orderByRowHash.has(txn.rowHash) || getStatementOrder(txn) !== null) return txn;
+    if (!orderByRowHash.has(txn.rowHash)) return txn;
+    const nextStatementOrder = orderByRowHash.get(txn.rowHash);
+    if (getStatementOrder(txn) === nextStatementOrder) return txn;
     updatedRows += 1;
     return {
       ...txn,
-      statementOrder: orderByRowHash.get(txn.rowHash),
+      statementOrder: nextStatementOrder,
     };
   });
   return updatedRows;
