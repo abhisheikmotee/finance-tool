@@ -126,6 +126,31 @@ test.describe("Net Cash Flow popup", () => {
     expect(titles).toContain("Jan 2026 Credit: 3,000");
   });
 
+  test("chart thins x-axis labels when many months are in view", async ({ page }) => {
+    await freezeDate(page, "2026-07-06T12:00:00Z");
+    await page.goto("/");
+
+    const rows = [];
+    for (let i = 0; i < 18; i += 1) {
+      const year = 2024 + Math.floor(i / 12);
+      const month = String((i % 12) + 1).padStart(2, "0");
+      rows.push({ txnDate: `${year}-${month}-15`, accountNumber: "0001", debit: 1000, credit: 2000, balance: 1000 });
+    }
+    await seedTransactions(page, rows);
+    await page.evaluate(() => {
+      state.quickFilters.datePreset = "all";
+      applyFilters();
+      renderAll();
+    });
+
+    await page.locator('.metric-tile[data-tile="net-cash-flow"]').click();
+
+    const chart = page.locator("#cash-flow-chart");
+    await expect(chart.locator("circle")).toHaveCount(18 * 3);
+    const labelCount = await chart.locator('text[text-anchor="middle"]').count();
+    expect(labelCount).toBeLessThanOrEqual(12);
+  });
+
   test("Net Cash Flow tile can be opened with the keyboard", async ({ page }) => {
     await freezeDate(page, "2026-07-06T12:00:00Z");
     await page.goto("/");

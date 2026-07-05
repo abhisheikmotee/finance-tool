@@ -1718,6 +1718,12 @@ function renderCashFlowChart() {
     .join(" ");
 
   const gridValues = [minY, (minY + maxY) / 2, maxY];
+  const maxLabels = 12;
+  const lastIndex = points.length - 1;
+  const labelCount = Math.min(maxLabels, points.length);
+  const labelIndices = new Set(Array.from({ length: labelCount }, (_, i) => (
+    labelCount > 1 ? Math.round((i * lastIndex) / (labelCount - 1)) : 0
+  )));
 
   els.cashFlowChart.innerHTML = `
     ${gridValues.map((value) => `
@@ -1735,7 +1741,7 @@ function renderCashFlowChart() {
             <title>${escapeHtml(`${monthLabel(point.month)} ${config.label}: ${moneyFormat(point[config.key])}`)}</title>
           </circle>
         `).join("")}
-        <text class="trend-label" x="${xForIndex(index)}" y="${height - 18}" text-anchor="middle">${escapeHtml(monthLabel(point.month))}</text>
+        ${labelIndices.has(index) ? `<text class="trend-label" x="${xForIndex(index)}" y="${height - 18}" text-anchor="middle">${escapeHtml(monthLabel(point.month))}</text>` : ""}
       </g>
     `).join("")}
   `;
