@@ -272,6 +272,27 @@
     </section>
   </div>
 
+  <div id="cash-flow-modal" class="overlay-panel" hidden>
+    <div class="overlay-backdrop" data-close-cash-flow-modal></div>
+    <section class="glass-card overlay-card" role="dialog" aria-modal="true" aria-labelledby="cash-flow-modal-title">
+      <div class="overlay-header">
+        <div>
+          <p class="section-kicker">Insights</p>
+          <h2 id="cash-flow-modal-title">Cash Flow Trend</h2>
+        </div>
+        <button id="close-cash-flow-modal" class="icon-btn icon-btn-subtle" type="button" aria-label="Close cash flow trend">Close</button>
+      </div>
+      <div class="cash-flow-legend">
+        <span class="legend-swatch legend-credit"></span>Credit
+        <span class="legend-swatch legend-debit"></span>Debit
+        <span class="legend-swatch legend-net"></span>Net Cash Flow
+      </div>
+      <div class="trendline-chart-wrap">
+        <svg id="cash-flow-chart" class="trendline-chart cash-flow-chart" viewBox="0 0 960 360" role="img" aria-label="Monthly credit, debit, and net cash flow"></svg>
+      </div>
+    </section>
+  </div>
+
   <script src="./app.js"></script>
 </body>
 </html>

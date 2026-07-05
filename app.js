@@ -185,6 +185,7 @@ const state = {
     direction: "desc",
   },
   shouldScrollNextTaxReceipt: true,
+  cashFlowModalOpen: false,
 };
 
 const els = {};
@@ -228,6 +229,9 @@ function cacheElements() {
   els.monthlySummaryMetrics = document.getElementById("monthly-summary-metrics");
   els.monthlySummaryBody = document.getElementById("monthly-summary-body");
   els.categoryBarList = document.getElementById("category-bar-list");
+  els.cashFlowModal = document.getElementById("cash-flow-modal");
+  els.closeCashFlowModal = document.getElementById("close-cash-flow-modal");
+  els.cashFlowChart = document.getElementById("cash-flow-chart");
   els.forecastSummaryBody = document.getElementById("forecast-summary-body");
   els.forecastSummaryCards = document.getElementById("forecast-summary-cards");
   els.trendlineChart = document.getElementById("trendline-chart");
@@ -344,6 +348,25 @@ function bindEvents() {
   els.taxForecastYearSelect.addEventListener("change", () => {
     state.selectedTaxYearKey = els.taxForecastYearSelect.value;
     renderTaxSummary();
+  });
+  els.monthlySummaryMetrics.addEventListener("click", (event) => {
+    const tile = event.target.closest('[data-tile="net-cash-flow"]');
+    if (tile) {
+      openCashFlowModal();
+    }
+  });
+  els.monthlySummaryMetrics.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const tile = event.target.closest('[data-tile="net-cash-flow"]');
+    if (!tile) return;
+    event.preventDefault();
+    openCashFlowModal();
+  });
+  els.closeCashFlowModal.addEventListener("click", closeCashFlowModal);
+  els.cashFlowModal.addEventListener("click", (event) => {
+    if (event.target instanceof HTMLElement && event.target.hasAttribute("data-close-cash-flow-modal")) {
+      closeCashFlowModal();
+    }
   });
 }
 
@@ -1204,6 +1227,9 @@ function renderAll() {
   renderTaxActionQueue();
   renderTaxTable();
   renderTaxSummary();
+  if (state.cashFlowModalOpen) {
+    renderCashFlowChart();
+  }
 }
 
 function renderQuickFilterChips() {
@@ -1597,7 +1623,7 @@ function renderMonthlySummary() {
   ];
 
   els.monthlySummaryMetrics.innerHTML = summaryTiles.map((metric) => `
-    <article class="metric-tile metric-tile-inline ${metric.toneClass}"${metric.tileKey ? ` data-tile="${metric.tileKey}"` : ""}>
+    <article class="metric-tile metric-tile-inline ${metric.toneClass}${metric.tileKey === "net-cash-flow" ? " metric-tile-clickable" : ""}"${metric.tileKey ? ` data-tile="${metric.tileKey}"` : ""}${metric.tileKey === "net-cash-flow" ? ' role="button" tabindex="0" aria-haspopup="dialog"' : ""}>
       <div class="metric-tile-body">
         <div class="metric-copy">
           <div class="metric-label">${escapeHtml(metric.label)}</div>
@@ -1634,6 +1660,85 @@ function renderMonthlySummary() {
     </tr>
   `;
   }).join("");
+}
+
+function openCashFlowModal() {
+  state.cashFlowModalOpen = true;
+  els.cashFlowModal.hidden = false;
+  document.body.classList.add("overlay-open");
+  renderCashFlowChart();
+}
+
+function closeCashFlowModal() {
+  state.cashFlowModalOpen = false;
+  els.cashFlowModal.hidden = true;
+  document.body.classList.remove("overlay-open");
+}
+
+function renderCashFlowChart() {
+  const series = computeMonthlyCashFlowSeries(state.filteredTransactions);
+  if (!series.length) {
+    els.cashFlowChart.innerHTML = `<foreignObject x="0" y="0" width="960" height="360"><div xmlns="http://www.w3.org/1999/xhtml" class="trend-empty">No monthly insights for the current filters. Try widening the date range or clearing bank filters.</div></foreignObject>`;
+    return;
+  }
+
+  const width = 960;
+  const height = 360;
+  const pad = { top: 24, right: 24, bottom: 44, left: 64 };
+  const points = series.map((row) => ({
+    month: row.month,
+    credit: row.credit,
+    debit: row.debit,
+    net: row.credit - row.debit,
+  }));
+  const allValues = points.flatMap((point) => [point.credit, point.debit, point.net]);
+  allValues.push(0);
+  let minY = Math.min(...allValues);
+  let maxY = Math.max(...allValues);
+  if (minY === maxY) {
+    minY -= 1;
+    maxY += 1;
+  }
+  const rangePadding = (maxY - minY) * 0.15;
+  minY -= rangePadding;
+  maxY += rangePadding;
+  const xStep = points.length > 1 ? (width - pad.left - pad.right) / (points.length - 1) : 0;
+  const xForIndex = (index) => pad.left + xStep * index;
+  const yForValue = (value) => pad.top + ((maxY - value) / (maxY - minY)) * (height - pad.top - pad.bottom);
+  const monthLabel = (month) => `${formatMonthShort(month)} ${month.slice(0, 4)}`;
+
+  const seriesConfig = [
+    { key: "credit", lineClass: "cash-flow-credit-line", pointClass: "cash-flow-point-credit", label: "Credit" },
+    { key: "debit", lineClass: "cash-flow-debit-line", pointClass: "cash-flow-point-debit", label: "Debit" },
+    { key: "net", lineClass: "cash-flow-net-line", pointClass: "cash-flow-point-net", label: "Net Cash Flow" },
+  ];
+
+  const pathFor = (key) => points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${xForIndex(index).toFixed(2)} ${yForValue(point[key]).toFixed(2)}`)
+    .join(" ");
+
+  const gridValues = [minY, (minY + maxY) / 2, maxY];
+
+  els.cashFlowChart.innerHTML = `
+    ${gridValues.map((value) => `
+      <g>
+        <line class="trend-gridline ${Math.abs(value) < 0.0001 ? "trend-zero-line" : ""}" x1="${pad.left}" y1="${yForValue(value)}" x2="${width - pad.right}" y2="${yForValue(value)}"></line>
+        <text class="trend-label" x="10" y="${yForValue(value) + 4}">${escapeHtml(compactMoneyFormat(value))}</text>
+      </g>
+    `).join("")}
+    <line class="trend-axis" x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}"></line>
+    ${seriesConfig.map((config) => `<path class="${config.lineClass}" d="${pathFor(config.key)}"></path>`).join("")}
+    ${points.map((point, index) => `
+      <g>
+        ${seriesConfig.map((config) => `
+          <circle class="trend-point ${config.pointClass}" cx="${xForIndex(index)}" cy="${yForValue(point[config.key])}" r="4.5">
+            <title>${escapeHtml(`${monthLabel(point.month)} ${config.label}: ${moneyFormat(point[config.key])}`)}</title>
+          </circle>
+        `).join("")}
+        <text class="trend-label" x="${xForIndex(index)}" y="${height - 18}" text-anchor="middle">${escapeHtml(monthLabel(point.month))}</text>
+      </g>
+    `).join("")}
+  `;
 }
 
 function renderTrendInsights() {
