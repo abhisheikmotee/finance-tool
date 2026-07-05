@@ -1513,6 +1513,18 @@ function renderSparkline(values, toneClass = "") {
   `;
 }
 
+function computeMonthlyCashFlowSeries(transactions) {
+  const monthTotals = new Map();
+  transactions.forEach((txn) => {
+    const month = txn.txnDate.slice(0, 7);
+    const current = monthTotals.get(month) || { month, debit: 0, credit: 0 };
+    current.debit += toInsightAmount(txn.debit, txn.currency);
+    current.credit += toInsightAmount(txn.credit, txn.currency);
+    monthTotals.set(month, current);
+  });
+  return Array.from(monthTotals.values()).sort((a, b) => a.month.localeCompare(b.month));
+}
+
 function renderMonthlySummary() {
   const summaryMap = new Map();
   const latestBalanceByAccount = new Map();
@@ -1544,16 +1556,10 @@ function renderMonthlySummary() {
 
   const monthlyRows = Array.from(summaryMap.values())
     .sort((a, b) => a.month.localeCompare(b.month) || a.accountLabel.localeCompare(b.accountLabel));
-  const monthTotals = Array.from(summaryMap.values()).reduce((map, row) => {
-    const current = map.get(row.month) || { debit: 0, credit: 0 };
-    current.debit += row.totalDebit;
-    current.credit += row.totalCredit;
-    map.set(row.month, current);
-    return map;
-  }, new Map());
-  const monthlySeries = Array.from(monthTotals.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  const monthlyDebitSeries = monthlySeries.map(([_, value]) => value.debit);
-  const monthlyCreditSeries = monthlySeries.map(([_, value]) => value.credit);
+  const monthlyCashFlowSeries = computeMonthlyCashFlowSeries(state.filteredTransactions);
+  const monthlyDebitSeries = monthlyCashFlowSeries.map((row) => row.debit);
+  const monthlyCreditSeries = monthlyCashFlowSeries.map((row) => row.credit);
+  const monthlyNetSeries = monthlyCashFlowSeries.map((row) => row.credit - row.debit);
   const avgMonthlyDebit = monthlyDebitSeries.length ? average(monthlyDebitSeries) : 0;
   const avgMonthlyCredit = monthlyCreditSeries.length ? average(monthlyCreditSeries) : 0;
   const currentBalance = Array.from(latestBalanceByAccount.values())
@@ -1575,22 +1581,23 @@ function renderMonthlySummary() {
     },
     {
       label: "Net Cash Flow",
+      tileKey: "net-cash-flow",
       value: moneyFormat(totalCredit - totalDebit),
       subtext: "Credit minus debit",
       toneClass: totalCredit - totalDebit >= 0 ? "is-positive" : "is-negative",
-      sparkValues: monthlyRows.map((row) => row.totalCredit - row.totalDebit),
+      sparkValues: monthlyNetSeries,
     },
     {
       label: "Current Balance",
       value: moneyFormat(currentBalance),
       subtext: "Latest visible balance by account",
       toneClass: currentBalance >= 0 ? "is-positive" : "is-negative",
-      sparkValues: buildRunningSeries(monthlyRows.map((row) => row.totalCredit - row.totalDebit)),
+      sparkValues: buildRunningSeries(monthlyNetSeries),
     },
   ];
 
   els.monthlySummaryMetrics.innerHTML = summaryTiles.map((metric) => `
-    <article class="metric-tile metric-tile-inline ${metric.toneClass}">
+    <article class="metric-tile metric-tile-inline ${metric.toneClass}"${metric.tileKey ? ` data-tile="${metric.tileKey}"` : ""}>
       <div class="metric-tile-body">
         <div class="metric-copy">
           <div class="metric-label">${escapeHtml(metric.label)}</div>
