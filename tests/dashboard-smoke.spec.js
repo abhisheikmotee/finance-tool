@@ -51,6 +51,27 @@ test("tax forecast shows dynamic tax year wording", async ({ page }) => {
   await expect(page.getByText(/Auto uses expenses so far from Jul \d{4} to Jun \d{4}/)).toBeVisible();
 });
 
+test("tax year selector switches forecast to a past year and disables expense editing", async ({ page }) => {
+  await freezeDate(page, "2026-07-05T12:00:00Z");
+  await page.goto("/");
+
+  const yearSelect = page.locator("#tax-forecast-year-select");
+  await expect(yearSelect).toHaveValue("2026-07-01:2027-06-30");
+  await expect(page.getByText("Current / So Far", { exact: true })).toBeVisible();
+  await expect(page.locator("#tax-expected-expenses-input")).toBeEnabled();
+
+  await yearSelect.selectOption("2025-07-01:2026-06-30");
+
+  await expect(page.getByText("Actual", { exact: true })).toBeVisible();
+  await expect(page.getByText("Year-End Result", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Actual saved amount for Jul 2025 to Jun 2026/)).toBeVisible();
+  await expect(page.locator("#tax-expected-expenses-input")).toBeDisabled();
+
+  await yearSelect.selectOption("2026-07-01:2027-06-30");
+  await expect(page.getByText("Current / So Far", { exact: true })).toBeVisible();
+  await expect(page.locator("#tax-expected-expenses-input")).toBeEnabled();
+});
+
 test("add row prefills next invoice date, GBP rate, and salary amount", async ({ page }) => {
   await page.route("https://open.er-api.com/v6/latest/GBP", async (route) => {
     await route.fulfill({

@@ -165,6 +165,7 @@ const state = {
   taxEntries: [],
   taxExpectedExpenses: DEFAULT_EXPECTED_EXPENSES,
   taxExpectedExpensesMode: AUTO_TAX_EXPENSES_MODE,
+  selectedTaxYearKey: "",
   currentPage: 1,
   pageSize: 10,
   ledgerHandle: null,
@@ -233,6 +234,7 @@ function cacheElements() {
   els.trendlineSummary = document.getElementById("trendline-summary");
   els.taxBody = document.getElementById("tax-body");
   els.taxSummaryBody = document.getElementById("tax-summary-body");
+  els.taxForecastYearSelect = document.getElementById("tax-forecast-year-select");
   els.addTaxRowBtn = document.getElementById("add-tax-row-btn");
   els.taxTableWrap = document.querySelector(".tax-table-wrap");
   els.taxCard = document.querySelector(".tax-card");
@@ -339,6 +341,10 @@ function bindEvents() {
   els.taxBody.addEventListener("input", handleTaxTableInput);
   els.taxBody.addEventListener("click", handleTaxTableClick);
   els.taxSummaryBody.addEventListener("change", handleTaxSummaryInput);
+  els.taxForecastYearSelect.addEventListener("change", () => {
+    state.selectedTaxYearKey = els.taxForecastYearSelect.value;
+    renderTaxSummary();
+  });
 }
 
 function onFilterChange() {
@@ -2754,8 +2760,22 @@ function buildTaxActionQueueEntry(entry, index, today) {
 }
 
 function renderTaxSummary() {
-  const summary = computeTaxSummary();
-  const taxYearRange = getCurrentTaxYearRange();
+  const availableTaxYearRanges = getAvailableTaxYearRanges();
+  const currentTaxYearRange = getCurrentTaxYearRange();
+  const currentTaxYearKey = `${currentTaxYearRange.start}:${currentTaxYearRange.end}`;
+  const hasSelectedKey = availableTaxYearRanges.some((range) => `${range.start}:${range.end}` === state.selectedTaxYearKey);
+  if (!hasSelectedKey) {
+    state.selectedTaxYearKey = currentTaxYearKey;
+  }
+  const taxYearRange = availableTaxYearRanges.find((range) => `${range.start}:${range.end}` === state.selectedTaxYearKey) || currentTaxYearRange;
+
+  els.taxForecastYearSelect.innerHTML = availableTaxYearRanges
+    .map((range) => `<option value="${range.start}:${range.end}">${escapeHtml(range.label)}</option>`)
+    .join("");
+  els.taxForecastYearSelect.value = state.selectedTaxYearKey;
+
+  const summary = computeTaxSummary(taxYearRange);
+  const periodStatus = summary.isCurrentTaxYear ? "current" : (taxYearRange.end < getTodayDateString() ? "past" : "future");
   const expenseTargetModeLabel = state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE ? "Manual" : "Auto";
   const comparisons = [
     {
@@ -2778,7 +2798,7 @@ function renderTaxSummary() {
     },
     {
       label: "Expenses",
-      expected: state.taxExpectedExpenses,
+      expected: summary.expectedExpenses,
       current: summary.soFarExpenses,
       progressLabel: "spent",
       inverseTone: true,
@@ -2792,15 +2812,33 @@ function renderTaxSummary() {
     },
   ];
 
+  const cardCopy = {
+    current: {
+      expectedKicker: "Expected by Year End",
+      currentKicker: "Current / So Far",
+      expectedCopy: `Target saved amount for ${escapeHtml(taxYearRange.label)} after tax, CSG, and planned expenses.`,
+    },
+    past: {
+      expectedKicker: "Year-End Result",
+      currentKicker: "Actual",
+      expectedCopy: `Actual saved amount for ${escapeHtml(taxYearRange.label)} after tax, CSG, and expenses.`,
+    },
+    future: {
+      expectedKicker: "Expected by Year End",
+      currentKicker: "Not Started Yet",
+      expectedCopy: `Target saved amount for ${escapeHtml(taxYearRange.label)} after tax, CSG, and planned expenses.`,
+    },
+  }[periodStatus];
+
   els.taxSummaryBody.innerHTML = `
     <div class="tax-summary-cards">
       <article class="tax-summary-card expected">
-        <p class="tax-summary-kicker">Expected by Year End</p>
+        <p class="tax-summary-kicker">${cardCopy.expectedKicker}</p>
         <div class="tax-summary-card-value ${summary.expectedSaved >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(summary.expectedSaved)}</div>
-        <div class="tax-summary-card-copy">Target saved amount for ${escapeHtml(taxYearRange.label)} after tax, CSG, and planned expenses.</div>
+        <div class="tax-summary-card-copy">${cardCopy.expectedCopy}</div>
       </article>
       <article class="tax-summary-card current">
-        <p class="tax-summary-kicker">Current / So Far</p>
+        <p class="tax-summary-kicker">${cardCopy.currentKicker}</p>
         <div class="tax-summary-card-value ${summary.soFarSaved >= 0 ? "amount-positive" : "amount-negative"}">${moneyFormat(summary.soFarSaved)}</div>
         <div class="tax-summary-card-copy">${escapeHtml(formatGapLabel(summary.soFarSaved - summary.expectedSaved, "vs expected saved amount"))}</div>
       </article>
@@ -2809,14 +2847,16 @@ function renderTaxSummary() {
       <div>
         <div class="tax-expense-heading">
           <div class="tax-expense-title">Expected Expenses</div>
-          <span class="mode-badge ${state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE ? "manual" : "auto"}">${escapeHtml(expenseTargetModeLabel)}</span>
+          <span class="mode-badge ${state.taxExpectedExpensesMode === MANUAL_TAX_EXPENSES_MODE ? "manual" : "auto"}">${escapeHtml(summary.isCurrentTaxYear ? expenseTargetModeLabel : "Read-only")}</span>
         </div>
         <div class="tax-expense-copy">Set the full-year expense target here. The comparison below shows whether current spend is still within plan.</div>
-        <div class="tax-expense-note">Auto uses expenses so far from ${escapeHtml(taxYearRange.label)} plus estimated remaining months from ledger history. Manual keeps your typed target.</div>
+        <div class="tax-expense-note">${summary.isCurrentTaxYear
+          ? `Auto uses expenses so far from ${escapeHtml(taxYearRange.label)} plus estimated remaining months from ledger history. Manual keeps your typed target.`
+          : "Editing the expense target is only available for the current tax year."}</div>
       </div>
       <div class="tax-expense-input-wrap">
         <label for="tax-expected-expenses-input">Expense Target</label>
-        <input id="tax-expected-expenses-input" class="tax-summary-input" type="number" min="0" step="0.01" value="${escapeHtml(String(state.taxExpectedExpenses))}">
+        <input id="tax-expected-expenses-input" class="tax-summary-input" type="number" min="0" step="0.01" value="${escapeHtml(String(summary.expectedExpenses))}" ${summary.isCurrentTaxYear ? "" : "disabled"}>
       </div>
     </section>
     <div class="tax-comparison-wrap">
@@ -3119,8 +3159,7 @@ function computeTaxEntry(entry) {
   };
 }
 
-function computeTaxSummary() {
-  const taxYearRange = getCurrentTaxYearRange();
+function computeTaxSummary(taxYearRange = getCurrentTaxYearRange()) {
   const entriesInWindow = state.taxEntries.filter((entry) => isWithinTaxYear(getEffectiveTaxReceiptDate(entry), taxYearRange));
   const expectedIncome = entriesInWindow.reduce((sum, entry) => sum + computeTaxEntry(entry).amountReceivedMur, 0);
   const soFarIncome = entriesInWindow
@@ -3133,13 +3172,20 @@ function computeTaxSummary() {
     .filter((entry) => entry.csgPaymentReference.trim())
     .reduce((sum, entry) => sum + computeTaxEntry(entry).csgAmountPaidMur, 0);
   const soFarExpenses = getTaxYearExpensesSoFar(state.transactions, getTodayDateString(), taxYearRange);
-  const expectedSaved = expectedIncome - expectedIncomeTax - expectedCsg - state.taxExpectedExpenses;
+  const currentTaxYearRange = getCurrentTaxYearRange();
+  const isCurrentTaxYear = taxYearRange.start === currentTaxYearRange.start && taxYearRange.end === currentTaxYearRange.end;
+  // The expense target is only tracked for the live tax year; other years have no
+  // stored target, so they compare against their own actual spend (gap of zero).
+  const expectedExpenses = isCurrentTaxYear ? state.taxExpectedExpenses : soFarExpenses;
+  const expectedSaved = expectedIncome - expectedIncomeTax - expectedCsg - expectedExpenses;
   const soFarSaved = soFarIncome - soFarIncomeTax - soFarCsg - soFarExpenses;
 
   return {
+    isCurrentTaxYear,
     expectedIncome,
     expectedIncomeTax,
     expectedCsg,
+    expectedExpenses,
     soFarIncome,
     soFarIncomeTax,
     soFarCsg,
@@ -3147,6 +3193,20 @@ function computeTaxSummary() {
     expectedSaved,
     soFarSaved,
   };
+}
+
+function getAvailableTaxYearRanges() {
+  const rangesByKey = new Map();
+  const addRange = (range) => {
+    if (range) {
+      rangesByKey.set(`${range.start}:${range.end}`, range);
+    }
+  };
+
+  addRange(getCurrentTaxYearRange());
+  state.taxEntries.forEach((entry) => addRange(getTaxYearRangeForDate(getEffectiveTaxReceiptDate(entry))));
+
+  return Array.from(rangesByKey.values()).sort((a, b) => b.startYear - a.startYear);
 }
 
 function refreshAutoTaxExpectedExpenses() {
@@ -3167,10 +3227,11 @@ function calculateSuggestedTaxExpectedExpenses(transactions) {
 }
 
 function getTaxYearExpensesSoFar(transactions, today = getTodayDateString(), taxYearRange = getCurrentTaxYearRange(today)) {
+  const asOfDate = today < taxYearRange.end ? today : taxYearRange.end;
   return transactions
     .filter((txn) =>
       txn.txnDate >= taxYearRange.start
-      && txn.txnDate <= today
+      && txn.txnDate <= asOfDate
       && txn.currency === "MUR"
       && (txn.bankName === "MCB" || txn.bankName === "SBM")
     )

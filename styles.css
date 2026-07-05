@@ -1274,6 +1274,12 @@ tbody tr:hover {
   text-align: right;
 }
 
+.tax-summary-input:disabled {
+  background: rgba(20, 38, 29, 0.05);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
 .tax-summary-value {
   font-weight: 700;
   text-align: right;
