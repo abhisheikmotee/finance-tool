@@ -3246,8 +3246,10 @@ function getEffectiveTaxReceiptDate(entry) {
   }
 
   const invoiceDate = new Date(`${entry.invoicedDate}T00:00:00`);
-  invoiceDate.setMonth(invoiceDate.getMonth() + 1);
-  return formatDateInputValue(invoiceDate);
+  const targetMonthFirstDay = new Date(invoiceDate.getFullYear(), invoiceDate.getMonth() + 1, 1);
+  const daysInTargetMonth = new Date(targetMonthFirstDay.getFullYear(), targetMonthFirstDay.getMonth() + 1, 0).getDate();
+  targetMonthFirstDay.setDate(Math.min(invoiceDate.getDate(), daysInTargetMonth));
+  return formatDateInputValue(targetMonthFirstDay);
 }
 
 function getLastTaxEntry() {
