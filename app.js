@@ -1080,7 +1080,7 @@ function isFresherTransaction(candidate, existing) {
   if (dateComparison !== 0) return dateComparison > 0;
 
   const orderComparison = compareStatementOrderForDisplay(candidate, existing);
-  if (orderComparison !== 0) return orderComparison < 0;
+  if (orderComparison !== 0) return orderComparison > 0;
 
   return candidate.rowHash.localeCompare(existing.rowHash) > 0;
 }
