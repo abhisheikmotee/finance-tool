@@ -287,8 +287,11 @@
         <span class="legend-swatch legend-debit"></span>Debit
         <span class="legend-swatch legend-net"></span>Net Cash Flow
       </div>
-      <div class="trendline-chart-wrap">
-        <svg id="cash-flow-chart" class="trendline-chart cash-flow-chart" viewBox="0 0 960 360" role="img" aria-label="Monthly credit, debit, and net cash flow"></svg>
+      <div class="cash-flow-chart-frame">
+        <svg id="cash-flow-axis" class="cash-flow-axis" width="64" height="360" role="presentation" aria-hidden="true"></svg>
+        <div id="cash-flow-scroll" class="cash-flow-scroll">
+          <svg id="cash-flow-chart" class="cash-flow-plot" height="360" role="img" aria-label="Monthly credit, debit, and net cash flow"></svg>
+        </div>
       </div>
     </section>
   </div>

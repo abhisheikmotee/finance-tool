@@ -232,6 +232,8 @@ function cacheElements() {
   els.cashFlowModal = document.getElementById("cash-flow-modal");
   els.closeCashFlowModal = document.getElementById("close-cash-flow-modal");
   els.cashFlowChart = document.getElementById("cash-flow-chart");
+  els.cashFlowAxis = document.getElementById("cash-flow-axis");
+  els.cashFlowScroll = document.getElementById("cash-flow-scroll");
   els.forecastSummaryBody = document.getElementById("forecast-summary-body");
   els.forecastSummaryCards = document.getElementById("forecast-summary-cards");
   els.trendlineChart = document.getElementById("trendline-chart");
@@ -1677,14 +1679,19 @@ function closeCashFlowModal() {
 
 function renderCashFlowChart() {
   const series = computeMonthlyCashFlowSeries(state.filteredTransactions);
+  const height = 360;
+  const axisWidth = 64;
+  const minPlotWidth = 872;
+  const pxPerMonth = 64;
+  const plotPad = { top: 24, right: 24, bottom: 44, left: 16 };
+
   if (!series.length) {
-    els.cashFlowChart.innerHTML = `<foreignObject x="0" y="0" width="960" height="360"><div xmlns="http://www.w3.org/1999/xhtml" class="trend-empty">No monthly insights for the current filters. Try widening the date range or clearing bank filters.</div></foreignObject>`;
+    els.cashFlowAxis.innerHTML = "";
+    els.cashFlowChart.setAttribute("width", String(minPlotWidth));
+    els.cashFlowChart.innerHTML = `<foreignObject x="0" y="0" width="${minPlotWidth}" height="${height}"><div xmlns="http://www.w3.org/1999/xhtml" class="trend-empty">No monthly insights for the current filters. Try widening the date range or clearing bank filters.</div></foreignObject>`;
     return;
   }
 
-  const width = 960;
-  const height = 360;
-  const pad = { top: 24, right: 24, bottom: 44, left: 64 };
   const points = series.map((row) => ({
     month: row.month,
     credit: row.credit,
@@ -1702,9 +1709,11 @@ function renderCashFlowChart() {
   const rangePadding = (maxY - minY) * 0.15;
   minY -= rangePadding;
   maxY += rangePadding;
-  const xStep = points.length > 1 ? (width - pad.left - pad.right) / (points.length - 1) : 0;
-  const xForIndex = (index) => pad.left + xStep * index;
-  const yForValue = (value) => pad.top + ((maxY - value) / (maxY - minY)) * (height - pad.top - pad.bottom);
+
+  const plotWidth = Math.max(minPlotWidth, plotPad.left + plotPad.right + pxPerMonth * Math.max(points.length - 1, 1));
+  const xStep = points.length > 1 ? (plotWidth - plotPad.left - plotPad.right) / (points.length - 1) : 0;
+  const xForIndex = (index) => plotPad.left + xStep * index;
+  const yForValue = (value) => plotPad.top + ((maxY - value) / (maxY - minY)) * (height - plotPad.top - plotPad.bottom);
   const monthLabel = (month) => `${formatMonthShort(month)} ${month.slice(0, 4)}`;
 
   const seriesConfig = [
@@ -1718,21 +1727,18 @@ function renderCashFlowChart() {
     .join(" ");
 
   const gridValues = [minY, (minY + maxY) / 2, maxY];
-  const maxLabels = 12;
-  const lastIndex = points.length - 1;
-  const labelCount = Math.min(maxLabels, points.length);
-  const labelIndices = new Set(Array.from({ length: labelCount }, (_, i) => (
-    labelCount > 1 ? Math.round((i * lastIndex) / (labelCount - 1)) : 0
-  )));
 
+  els.cashFlowAxis.innerHTML = gridValues.map((value) => `
+    <g>
+      <text class="trend-label" x="10" y="${yForValue(value) + 4}">${escapeHtml(compactMoneyFormat(value))}</text>
+      <line class="trend-gridline ${Math.abs(value) < 0.0001 ? "trend-zero-line" : ""}" x1="${axisWidth - 8}" y1="${yForValue(value)}" x2="${axisWidth}" y2="${yForValue(value)}"></line>
+    </g>
+  `).join("");
+
+  els.cashFlowChart.setAttribute("width", String(plotWidth));
   els.cashFlowChart.innerHTML = `
-    ${gridValues.map((value) => `
-      <g>
-        <line class="trend-gridline ${Math.abs(value) < 0.0001 ? "trend-zero-line" : ""}" x1="${pad.left}" y1="${yForValue(value)}" x2="${width - pad.right}" y2="${yForValue(value)}"></line>
-        <text class="trend-label" x="10" y="${yForValue(value) + 4}">${escapeHtml(compactMoneyFormat(value))}</text>
-      </g>
-    `).join("")}
-    <line class="trend-axis" x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}"></line>
+    ${gridValues.map((value) => `<line class="trend-gridline ${Math.abs(value) < 0.0001 ? "trend-zero-line" : ""}" x1="0" y1="${yForValue(value)}" x2="${plotWidth}" y2="${yForValue(value)}"></line>`).join("")}
+    <line class="trend-axis" x1="0" y1="${height - plotPad.bottom}" x2="${plotWidth}" y2="${height - plotPad.bottom}"></line>
     ${seriesConfig.map((config) => `<path class="${config.lineClass}" d="${pathFor(config.key)}"></path>`).join("")}
     ${points.map((point, index) => `
       <g>
@@ -1741,10 +1747,12 @@ function renderCashFlowChart() {
             <title>${escapeHtml(`${monthLabel(point.month)} ${config.label}: ${moneyFormat(point[config.key])}`)}</title>
           </circle>
         `).join("")}
-        ${labelIndices.has(index) ? `<text class="trend-label" x="${xForIndex(index)}" y="${height - 18}" text-anchor="middle">${escapeHtml(monthLabel(point.month))}</text>` : ""}
+        <text class="trend-label" x="${xForIndex(index)}" y="${height - 18}" text-anchor="middle">${escapeHtml(monthLabel(point.month))}</text>
       </g>
     `).join("")}
   `;
+
+  els.cashFlowScroll.scrollLeft = els.cashFlowScroll.scrollWidth;
 }
 
 function renderTrendInsights() {

@@ -1861,8 +1861,27 @@ tbody tr:hover {
   color: var(--muted-soft);
 }
 
-.cash-flow-chart {
-  min-height: 360px;
+.cash-flow-chart-frame {
+  display: flex;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.82);
+  overflow: hidden;
+}
+
+.cash-flow-axis {
+  flex: 0 0 auto;
+  display: block;
+}
+
+.cash-flow-scroll {
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.cash-flow-plot {
+  display: block;
 }
 
 .cash-flow-legend {

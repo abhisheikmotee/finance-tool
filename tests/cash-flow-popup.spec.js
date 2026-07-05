@@ -126,12 +126,12 @@ test.describe("Net Cash Flow popup", () => {
     expect(titles).toContain("Jan 2026 Credit: 3,000");
   });
 
-  test("chart thins x-axis labels when many months are in view", async ({ page }) => {
+  test("chart gives every month its own label via horizontal scroll instead of thinning them", async ({ page }) => {
     await freezeDate(page, "2026-07-06T12:00:00Z");
     await page.goto("/");
 
     const rows = [];
-    for (let i = 0; i < 18; i += 1) {
+    for (let i = 0; i < 30; i += 1) {
       const year = 2024 + Math.floor(i / 12);
       const month = String((i % 12) + 1).padStart(2, "0");
       rows.push({ txnDate: `${year}-${month}-15`, accountNumber: "0001", debit: 1000, credit: 2000, balance: 1000 });
@@ -146,9 +146,16 @@ test.describe("Net Cash Flow popup", () => {
     await page.locator('.metric-tile[data-tile="net-cash-flow"]').click();
 
     const chart = page.locator("#cash-flow-chart");
-    await expect(chart.locator("circle")).toHaveCount(18 * 3);
-    const labelCount = await chart.locator('text[text-anchor="middle"]').count();
-    expect(labelCount).toBeLessThanOrEqual(12);
+    await expect(chart.locator("circle")).toHaveCount(30 * 3);
+    await expect(chart.locator('text[text-anchor="middle"]')).toHaveCount(30);
+
+    const scrollState = await page.locator("#cash-flow-scroll").evaluate((el) => ({
+      scrollLeft: el.scrollLeft,
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+    }));
+    expect(scrollState.scrollWidth).toBeGreaterThan(scrollState.clientWidth);
+    expect(scrollState.scrollLeft).toBeGreaterThanOrEqual(scrollState.scrollWidth - scrollState.clientWidth - 1);
   });
 
   test("Net Cash Flow tile can be opened with the keyboard", async ({ page }) => {
