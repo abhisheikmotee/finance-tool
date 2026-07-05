@@ -1307,18 +1307,18 @@ function sortTransactions(rows) {
     if (typeof aValue === "number" && typeof bValue === "number") {
       const primaryComparison = aValue - bValue;
       if (primaryComparison) return direction * primaryComparison;
-      return direction * a.txnDate.localeCompare(b.txnDate)
+      return direction * (a.txnDate.localeCompare(b.txnDate)
         || a.accountLabel.localeCompare(b.accountLabel)
         || compareStatementOrderForDisplay(a, b)
-        || a.rowHash.localeCompare(b.rowHash);
+        || a.rowHash.localeCompare(b.rowHash));
     }
 
     const primaryComparison = String(aValue).localeCompare(String(bValue));
     if (primaryComparison) return direction * primaryComparison;
-    return direction * a.txnDate.localeCompare(b.txnDate)
+    return direction * (a.txnDate.localeCompare(b.txnDate)
       || a.accountLabel.localeCompare(b.accountLabel)
       || compareStatementOrderForDisplay(a, b)
-      || a.rowHash.localeCompare(b.rowHash);
+      || a.rowHash.localeCompare(b.rowHash));
   });
 }
 
